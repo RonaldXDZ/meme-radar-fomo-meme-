@@ -4,6 +4,13 @@
 export const VOICE_TTL = 7 * 24 * 60 * 60_000;
 export const voiceKey = row => `${row.chain}:${row.chain === 'sol' ? row.address : row.address.toLowerCase()}`;
 export function voiceEligible(row, now) {
+  if (row?.source === 'observation') {
+    return typeof row.address === 'string' && typeof row.chain === 'string'
+      && row.status === 'OBSERVATION_READY' && row.observationEligible === true
+      && row.qualified === false && row.recommendationEligible === false
+      && Number.isFinite(row.alertAt) && row.alertAt > 0 && row.alertAt <= now
+      && now - row.alertAt < 30 * 60_000 && Number.isFinite(row.alertUntil) && row.alertUntil > now;
+  }
   const statusReady = row?.source === 'live' ? row.status === 'LIVE_READY' : row?.status === 'X_REVIEW';
   return typeof row?.address === 'string' && typeof row?.chain === 'string'
     && row.qualified === true && statusReady
@@ -27,7 +34,8 @@ export class VoiceAlerts {
         if (row?.chain !== chain || !voiceEligible(row, now) || ignored(row)) continue;
         const key = voiceKey(row);
         current.set(key, row);
-        if (first || row.auditedAt < this.startedAt) this.quiet.set(key, now);
+        const eventAt = row.source === 'observation' ? row.alertAt : row.auditedAt;
+        if (first || eventAt < this.startedAt) this.quiet.set(key, now);
         if (this.quiet.has(key)) this.quiet.set(key, now); // A continuously qualified row is not new after seven days.
         if (!this.quiet.has(key)) this.pending.set(key, row);
       }

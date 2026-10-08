@@ -74,6 +74,24 @@ test('unverified recommendation gate cancels a previously qualified spotlight wi
   assert.ok(vm.runInContext("unifiedPoolRows('bsc').length", h.context) > 0);
 });
 
+test('explicit recent-lead speech pins an unverified retained card without opening the recommendation gate', () => {
+  const h = harness();
+  h.context.lastData.recommendationGate = { available: false };
+  const lead = { ...row(), source: 'observation', status: 'OBSERVATION_READY', qualified: false,
+    recommendationEligible: false, observationEligible: true, alertAt: T, alertUntil: T + 30 * 60000,
+    sourceUpdatedAt: T - 60000, expiresAt: T - 40000, retainedSnapshot: true, stale: true,
+    evidenceStale: true, auditEligible: false, displayEligible: true, displayUntil: T + 30 * 60000 };
+  h.context.liveData.rows = [];
+  h.events['radar-snapshot']({ detail: { mode: 'observation', alertsAvailable: true, chains: { bsc: [lead] } } });
+  h.events['radar-voice-start']({ detail: { id: 1, startedAt: T, rows: [lead] } });
+  assert.equal(h.context.rank(lead, T), 0);
+  const projected = vm.runInContext("unifiedPoolRows('bsc')[0]", h.context);
+  assert.equal(projected.stale, true); assert.equal(projected.auditEligible, false);
+  assert.equal(projected.recommendationEligible, false); assert.equal(h.context.lastData.recommendationGate.available, false);
+  h.events['radar-snapshot']({ detail: { mode: 'observation', alertsAvailable: true, chains: { bsc: [] } } });
+  assert.equal(h.context.rank(lead, T), Infinity);
+});
+
 test('alert card is first below the header, appears only after playback event and pins the actual existing row', () => {
   assert.ok(html.indexOf('id="voiceSpotlight"') < html.indexOf('id="notice"'));
   const h = harness();

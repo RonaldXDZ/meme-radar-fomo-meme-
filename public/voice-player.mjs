@@ -3,6 +3,10 @@ export const CANDIDATE_PHRASES = Object.freeze({
   en: 'A new meme candidate was found. Take a look.'
 });
 export const CANDIDATE_PHRASE = CANDIDATE_PHRASES.zh;
+export const OBSERVATION_PHRASES = Object.freeze({
+  zh: '发现新的观察线索，尚未安全核验，请查看。',
+  en: 'A new observation lead was found. Safety is not verified. Take a look.'
+});
 export const normalizeVoiceLanguage = language => language === 'en' ? 'en' : 'zh';
 
 // Use voices installed on the listener's device; never redistribute a system recording.
@@ -45,7 +49,7 @@ export function createVoicePlayer({ synthesis = globalThis.speechSynthesis,
     },
     resume() { if (unlocked) synthesis?.resume?.(); return this.ready; },
     stop() { active?.stop(); },
-    play(volume = .5, { onStart, language: requestedLanguage = language } = {}) {
+    play(volume = .5, { onStart, language: requestedLanguage = language, mode = 'candidate' } = {}) {
       requestedLanguage = normalizeVoiceLanguage(requestedLanguage);
       if (!this.ready) return Promise.reject(new Error('audio_suspended'));
       if (requestedLanguage !== language) return Promise.reject(new Error('voice_language_not_unlocked'));
@@ -55,7 +59,7 @@ export function createVoicePlayer({ synthesis = globalThis.speechSynthesis,
       // `paused` flag from the earlier enable click.
       synthesis.resume?.();
       return new Promise((resolve, reject) => {
-        const utterance = makeUtterance(CANDIDATE_PHRASES[language]);
+        const utterance = makeUtterance((mode === 'observation' ? OBSERVATION_PHRASES : CANDIDATE_PHRASES)[language]);
         utterance.voice = voice; utterance.lang = voice.lang;
         utterance.volume = Math.min(1, volume); utterance.rate = .9; utterance.pitch = 1.05;
         let timer, started = false;

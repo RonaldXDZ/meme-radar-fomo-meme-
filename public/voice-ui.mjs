@@ -15,6 +15,7 @@ const copy = {
   off: ['未开启','未開啟','Off','オフ','꺼짐','متوقف'],
   click: ['点击启用声音','點擊啟用聲音','Click to allow audio','クリックして音声を許可','클릭하여 소리 허용','انقر للسماح بالصوت'],
   ready: ['已开启 · 仅提醒新候选','已開啟 · 僅提醒新候選','On · new candidates only','オン・新しい候補のみ','켜짐 · 새 후보만','مفعّل · المرشحون الجدد فقط'],
+  observation: ['已开启 · 新线索提醒','已開啟 · 新線索提醒','On · new observation leads','オン・新しい観察候補','켜짐 · 새 관찰 단서','مفعّل · إشارات مراقبة جديدة'],
   loading: ['正在准备语音…','正在準備語音…','Preparing audio…','音声を準備中…','음성 준비 중…','جارٍ تجهيز الصوت…'],
   error: ['声音未就绪，点击重试','聲音未就緒，點擊重試','Audio not ready; click to retry','音声未準備・クリックして再試行','소리 준비 안 됨; 클릭하여 재시도','الصوت غير جاهز؛ انقر لإعادة المحاولة'],
   noVoice: ['所选语言的本机语音未就绪，请重试或在系统中安装','所選語言的本機語音未就緒，請重試或在系統中安裝','The selected local voice is unavailable; retry or install it on this device','選択した言語のローカル音声がありません。再試行または端末に追加してください','선택한 언어의 로컬 음성이 없습니다. 다시 시도하거나 기기에 설치하세요','صوت اللغة المحددة غير متاح محليًا؛ أعد المحاولة أو ثبته على هذا الجهاز'],
@@ -47,7 +48,8 @@ function paint() {
   $('voiceStop').textContent = t('stop'); $('voiceStop').hidden = !enabled && state !== 'loading';
   $('voiceLanguageLabel').textContent = t('language'); $('voiceLanguage').setAttribute('aria-label', t('language'));
   $('voiceVolumeLabel').textContent = t('volume'); $('voiceVolume').setAttribute('aria-label', t('volume'));
-  $('voiceStatus').textContent = t(unavailable && !['loading', 'error', 'noVoice', 'unsupported'].includes(state) ? 'unverified' : state);
+  $('voiceStatus').textContent = t(unavailable && !['loading', 'error', 'noVoice', 'unsupported'].includes(state) ? 'unverified'
+    : state === 'ready' && snapshot?.mode === 'observation' ? 'observation' : state);
 }
 function savePrefs() { prefs = { enabled, volume: Number($('voiceVolume').value), language: voiceLanguage }; write(prefsKey, prefs); }
 async function notify() {
@@ -65,7 +67,7 @@ async function notify() {
       if (!batch.length || now - (saved.lastAt || 0) < 60_000) return;
       let played = false, announcement = null, announcedRows = [];
       try {
-        played = await player.play(Number($('voiceVolume').value) / 100, { language: voiceLanguage, onStart() {
+        played = await player.play(Number($('voiceVolume').value) / 100, { language: voiceLanguage, mode: snapshot?.mode, onStart() {
           if (started !== epoch || !enabled || !online || Number($('voiceVolume').value) === 0) return false;
           const at = Date.now();
           // Speech may have waited in the browser queue. Recheck the latest
@@ -82,7 +84,7 @@ async function notify() {
           write(historyKey, { notified, lastAt: at });
           tracker.acknowledge(announcedRows, at);
           announcement = { id: ++alertSequence, startedAt: at, rows: announcedRows.map(row => ({
-            source: row.source === 'live' ? 'live' : 'audit', chain: row.chain, address: row.address,
+            source: row.source === 'observation' ? 'observation' : row.source === 'live' ? 'live' : 'audit', chain: row.chain, address: row.address,
             auditedAt: row.auditedAt, staleAt: row.staleAt
           })) };
           window.dispatchEvent(new CustomEvent('radar-voice-start', { detail: announcement }));
@@ -115,7 +117,7 @@ $('voiceEnable').addEventListener('click', async () => {
     if (!(volume > 0)) {
       enabled = false; state = 'muted'; try { savePrefs(); } catch {} paint(); return;
     }
-    const preview = player.play(volume, { language: voiceLanguage, onStart() {
+    const preview = player.play(volume, { language: voiceLanguage, mode: snapshot?.mode, onStart() {
       if (started !== epoch) return false;
       enabled = true; savePrefs(); state = online ? 'ready' : 'offline'; paint();
       return true;
@@ -149,7 +151,7 @@ $('voiceLanguage').addEventListener('change', async () => {
     player.unlock(voiceLanguage);
     const volume = Number($('voiceVolume').value) / 100;
     if (!(volume > 0)) { state = 'muted'; savePrefs(); paint(); return; }
-    const preview = player.play(volume, { language: voiceLanguage, onStart() {
+    const preview = player.play(volume, { language: voiceLanguage, mode: snapshot?.mode, onStart() {
       if (started !== epoch) return false;
       state = online ? 'ready' : 'offline'; savePrefs(); paint(); return true;
     } });

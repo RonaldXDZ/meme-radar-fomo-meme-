@@ -127,6 +127,41 @@ export function voiceSnapshot(state, enabledChains, liveDiscovery = null) {
     liveDiscovery ? mergedVoiceRows(liveDiscovery, state, scopes[chain], chain) : auditVoiceRows(state, scopes[chain], chain)])) };
 }
 
+// Observation alerts are explicitly separate from safety recommendations.
+// A retained receipt can notify once, but never renew its quote/audit clocks.
+export function observationVoiceSnapshot(state, enabledChains, liveDiscovery = null, now = Date.now()) {
+  const scopes = { ...state.chainStates, [state.activeChain]: state };
+  return { mode: 'observation', alertsAvailable: true, chains: Object.fromEntries(
+    enabledChains.filter(chain => CHAIN_IDS.has(chain)).map(chain => {
+      const scope = scopes[chain], rejected = rejectedAuditKeys(scope, chain);
+      let fresh = [];
+      try { fresh = currentLiveRows(publicLiveSnapshot(liveDiscovery?.snapshot(chain), chain).rows, scope, chain, now); } catch {}
+      const rows = new Map();
+      for (const row of [...fresh, ...retainedLiveRows(scope, chain, now)]) {
+        const key = tokenKey(chain, row.address), alertAt = finite(row.qualifiedAt);
+        const retained = row.retainedSnapshot === true;
+        const alertUntil = Math.min(alertAt + 30 * 60_000, finite(retained ? row.displayUntil : row.expiresAt));
+        if (rows.has(key) || rejected.has(key) || state.riskExclusions?.[key]
+          || !(alertAt > 0 && alertAt <= now && alertUntil > now)) continue;
+        rows.set(key, {
+          source: 'observation', chain, address: text(row.address, 80),
+          symbol: publicMessage(row.symbol, '?', 30), name: publicMessage(row.name, '', 80),
+          marketCap: finiteOrNull(row.marketCap), liquidity: finiteOrNull(row.liquidity),
+          volume5m: finiteOrNull(row.volume5m), createdAt: finiteOrNull(row.createdAt),
+          ageBasis: ['pool', 'trade', 'launch', 'token'].includes(row.ageBasis) ? row.ageBasis : 'unknown',
+          firstSeenAt: finite(row.firstSeenAt), qualifiedAt: alertAt,
+          sourceUpdatedAt: finite(row.sourceUpdatedAt), expiresAt: finite(row.expiresAt),
+          displayUntil: retained ? finite(row.displayUntil) : null,
+          retainedSnapshot: retained, evidenceStale: retained, stale: retained,
+          auditEligible: !retained, discoveryState: retained ? 'RETAINED' : 'READY', displayEligible: true,
+          status: 'OBSERVATION_READY', observationEligible: true, alertAt, alertUntil,
+          qualified: false, recommendationEligible: false, hasUnknownRisk: true
+        });
+      }
+      return [chain, [...rows.values()].slice(0, 200)];
+    })) };
+}
+
 function auditVoiceRows(state, scope, chain) {
   return (scope?.candidates || []).slice(0, 200).map(row => ({
     source: 'audit', chain, address: text(row.address, 80), status: text(row.status, 32),
@@ -170,7 +205,8 @@ function retainedLiveRows(scope, chain, now = Date.now()) {
     ...row,
     // These are explicit display receipts from the last successful scan. The
     // original evidence clocks remain untouched and are normally stale by the
-    // time this fallback is used. They can never trigger voice or an audit.
+    // time this fallback is used. Only observation alerts may use these;
+    // they can never become a fresh audit or safety recommendation.
     stale: true,
     auditEligible: false,
     discoveryState: 'RETAINED',
@@ -1033,7 +1069,7 @@ export function createServer({ state, settings, controls, switchChain,
         if (gate) {
           snapshot.recommendationGate = { ...gate, withheld: snapshot.rows.length };
           // Discovery is observation, not a recommendation. Keep screened leads
-          // visible while preventing unverified evidence from qualifying alerts.
+          // visible without qualifying them as safety recommendations.
           snapshot.rows = snapshot.rows.map(row => ({ ...row, hasUnknownRisk: true,
             recommendationEligible: false }));
         }
@@ -1126,8 +1162,7 @@ export function createServer({ state, settings, controls, switchChain,
       if (gate) {
         output.recommendationGate = { ...gate, withheld: output.candidates?.length || 0 };
         output.candidates = [];
-        output.voiceSnapshot = { alertsAvailable: false, unavailableReason: 'risk_evidence',
-          chains: Object.fromEntries(enabledChains.map(id => [id, []])) };
+        output.voiceSnapshot = observationVoiceSnapshot(state.value, enabledChains, liveDiscovery);
       }
       output.events = (output.events || []).filter(event => !event.chain || publicChains.has(event.chain));
       if (gate) output.events = output.events.filter(event => event.type !== 'CANDIDATE_NEW');

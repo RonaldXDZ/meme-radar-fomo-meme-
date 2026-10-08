@@ -8,7 +8,7 @@ const source = fs.readFileSync(new URL('../public/voice-ui.mjs', import.meta.url
 const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
 function harness({ hub = { storage: new Map(), tabs: [], locked: false }, failHistory = false, autoStart = true } = {}) {
   let now = Date.now(), finish, begin, plays = 0;
-  const emitted = [], playLanguages = [], unlockLanguages = [];
+  const emitted = [], playLanguages = [], unlockLanguages = [], playModes = [];
   const elements = new Map(), events = {};
   const el = id => {
     if (!elements.has(id)) elements.set(id, { value: id === 'voiceVolume' ? '50' : '', listeners: {},
@@ -16,9 +16,9 @@ function harness({ hub = { storage: new Map(), tabs: [], locked: false }, failHi
     return elements.get(id);
   };
   const player = { ready: true, playing: false, unlock: async language => { unlockLanguages.push(language); }, stop() { finish?.(false); },
-    play(volume, { onStart, language } = {}) {
+    play(volume, { onStart, language, mode } = {}) {
       if (this.playing || !(volume > 0)) return Promise.resolve(false);
-      this.playing = true; plays++; playLanguages.push(language);
+      this.playing = true; plays++; playLanguages.push(language); playModes.push(mode);
       return new Promise(resolve => {
         let started = false;
         finish = ok => { finish = null; this.playing = false; resolve(ok); };
@@ -48,13 +48,34 @@ function harness({ hub = { storage: new Map(), tabs: [], locked: false }, failHi
     input(value) { el('voiceVolume').value = String(value); el('voiceVolume').listeners.input(); },
     changeLanguage(value) { el('voiceLanguage').value = value; return el('voiceLanguage').listeners.change(); },
     finish(ok = true) { assert.ok(finish, 'audio must be playing'); finish(ok); },
-    get plays() { return plays; }, get playLanguages() { return playLanguages; }, get unlockLanguages() { return unlockLanguages; },
+    get plays() { return plays; }, get playLanguages() { return playLanguages; }, get unlockLanguages() { return unlockLanguages; }, get playModes() { return playModes; },
     get history() { return JSON.parse(hub.storage.get('memeCommunityVoiceHistoryV1') || '{}'); },
     get status() { return el('voiceStatus').textContent; } };
 }
 async function enable(h) {
   h.snapshot(); const pending = h.click('voiceEnable'); await flush(); h.start(); h.finish(); await pending; await flush();
 }
+
+test('recent unverified observations announce, deduplicate across tabs and cancel if removed before speech starts', async () => {
+  const a = harness({ autoStart: false }), b = harness({ hub: a.hub, autoStart: false });
+  await enable(a); await enable(b); a.advance(); b.advance();
+  const candidate = a.row();
+  const lead = { ...candidate, source: 'observation', status: 'OBSERVATION_READY', qualified: false,
+    recommendationEligible: false, observationEligible: true, retainedSnapshot: true,
+    alertAt: candidate.auditedAt, alertUntil: candidate.staleAt };
+  const send = (h, rows) => h.events['radar-snapshot']({ detail: { mode: 'observation', alertsAvailable: true, chains: { bsc: rows } } });
+  send(a, [lead]); send(b, [lead]); await flush();
+  assert.equal(a.plays + b.plays, 3); assert.equal(a.playModes.at(-1), 'observation');
+  a.start(); a.finish(); await flush();
+  assert.match(a.status, /新线索提醒/); assert.equal(a.emitted[0].detail.rows[0].source, 'observation');
+  send(b, [lead]); await flush(); assert.equal(a.plays + b.plays, 3);
+  a.advance(61000);
+  const second = { ...lead, address: 'second', alertAt: a.row().auditedAt };
+  send(a, [lead, second]); await flush();
+  send(a, [lead]); a.start(); await flush();
+  assert.equal(a.history.notified['bsc:second'], undefined);
+  assert.equal(a.player.playing, false);
+});
 
 test('strict unavailable alerts say preview-only, never claim enabled or interrupt a manual preview on each refresh', async () => {
   const h = harness();

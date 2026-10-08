@@ -270,7 +270,8 @@ test('所有显式像素字号均不小于14像素', () => {
 });
 
 test('看板明确区分累计、本轮和近30分钟口径', () => {
-  assert.match(html, /<h1[^>]*>Meme雷达开源版 V2\.1<\/h1>/);
+  const version = JSON.parse(fs.readFileSync(path.join(here, '..', 'package.json'), 'utf8')).version;
+  assert.equal(html.match(/<h1[^>]*>([^<]+)<\/h1>/)?.[1], `Meme雷达开源版 V${version}`);
   assert.match(html, /class="mark">雷达<\/div>/);
   assert.match(html, /扫描轮次[\s\S]*累计/);
   assert.match(html, /发现代币[\s\S]*本轮/);

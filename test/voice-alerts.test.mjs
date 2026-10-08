@@ -2,8 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { VoiceAlerts, voiceEligible, voiceKey, VOICE_TTL } from '../public/voice-alerts.mjs';
-import { CANDIDATE_PHRASE, CANDIDATE_PHRASES, createVoicePlayer, selectChineseVoice, selectEnglishVoice, selectVoice } from '../public/voice-player.mjs';
-import { voiceSnapshot, toPublicStatus, createServer } from '../src/server.mjs';
+import { CANDIDATE_PHRASE, CANDIDATE_PHRASES, OBSERVATION_PHRASES, createVoicePlayer, selectChineseVoice, selectEnglishVoice, selectVoice } from '../public/voice-player.mjs';
+import { voiceSnapshot, observationVoiceSnapshot, toPublicStatus, createServer } from '../src/server.mjs';
+import { reconcileLiveLeads } from '../src/live-leads.mjs';
 import { config } from '../src/config.mjs';
 import { normalizeLiveRows } from '../src/live-discovery.mjs';
 
@@ -11,6 +12,56 @@ const now = 1_800_000_000_000;
 const row = (address = '0x' + 'a'.repeat(40), at = now) => ({ address, chain: 'bsc',
   status: 'X_REVIEW', qualified: true, auditedAt: at, staleAt: at + 600000 });
 const snapshot = rows => ({ chains: { bsc: rows } });
+
+test('retained observation receipts can speak once, without qualifying safety or renewing market clocks', () => {
+  const at = Date.now(), address = '0x' + '1'.repeat(40), qualifiedAt = at - 12 * 60_000;
+  const state = { activeChain: 'bsc', candidates: [], auditQueue: [], chainStates: {}, riskExclusions: {},
+    liveLeads: reconcileLiveLeads([], [{ eligible: true, address, lead: { chain: 'bsc', address,
+      marketProvider: 'AVE', symbol: 'LEAD', qualifiedAt, capturedAt: qualifiedAt,
+      sourceUpdatedAt: qualifiedAt, expiresAt: qualifiedAt + 20_000, raw: 'PRIVATE_FIXTURE' } }], { chain: 'bsc', confirmedAt: qualifiedAt }) };
+  const feed = () => observationVoiceSnapshot(state, ['bsc'], null, at);
+  const result = feed(), lead = result.chains.bsc[0];
+  assert.equal(result.mode, 'observation'); assert.equal(result.alertsAvailable, true);
+  assert.equal(lead.retainedSnapshot, true); assert.equal(lead.stale, true); assert.equal(lead.auditEligible, false);
+  assert.equal(lead.qualified, false); assert.equal(lead.recommendationEligible, false);
+  assert.equal(lead.sourceUpdatedAt, qualifiedAt); assert.equal(lead.expiresAt, qualifiedAt + 20_000);
+  assert.equal(voiceEligible(lead, at), true); assert.doesNotMatch(JSON.stringify(result), /PRIVATE_FIXTURE|raw/);
+  const tracker = new VoiceAlerts(); tracker.reset(qualifiedAt - 1); tracker.ingest(snapshot([]), qualifiedAt - 1);
+  tracker.ingest(result, at); assert.equal(tracker.batch({}, at).length, 1);
+  tracker.acknowledge([lead], at); tracker.ingest(result, at + 1); assert.equal(tracker.batch({}, at + 1).length, 0);
+  const baseline = new VoiceAlerts(); baseline.reset(at); baseline.ingest(result, at);
+  assert.equal(baseline.batch({}, at).length, 0, 'opening a page must not replay old receipts');
+  assert.equal(voiceEligible({ ...lead, observationEligible: false }, at), false);
+  assert.equal(voiceEligible({ ...lead, qualified: true }, at), false);
+  assert.equal(voiceEligible({ ...lead, status: 'HARD_REJECT' }, at), false);
+  assert.equal(voiceEligible({ ...lead, alertAt: at + 1 }, at), false);
+  assert.equal(voiceEligible({ ...lead, alertUntil: at }, at), false);
+  assert.equal(observationVoiceSnapshot(state, ['bsc'], null, qualifiedAt + 30 * 60_000).chains.bsc.length, 0);
+  state.riskExclusions['bsc:' + address] = { reason: 'risk' };
+  assert.equal(feed().chains.bsc.length, 0);
+  state.riskExclusions = {}; state.auditQueue = [{ address, status: 'HARD_REJECT' }];
+  assert.equal(feed().chains.bsc.length, 0);
+  state.auditQueue = []; state.candidates = [{ address, status: 'REJECTED' }];
+  assert.equal(feed().chains.bsc.length, 0);
+});
+
+test('observation alerts use one contract identity through fresh to retained transitions and enabled chains only', () => {
+  const at = Date.now(), address = '0x' + 'f'.repeat(40);
+  const raw = { address, chain: 'bsc', marketProvider: 'AVE', symbol: 'NEW',
+    auditEligible: true, discoveryState: 'READY', stale: false, firstSeenAt: at,
+    qualifiedAt: at, capturedAt: at, sourceUpdatedAt: at, expiresAt: at + 20_000 };
+  const state = { activeChain: 'bsc', chainStates: {}, liveLeads: reconcileLiveLeads([], [{ eligible: true, address, lead: raw }], { chain: 'bsc', confirmedAt: at }) };
+  const live = { snapshot: chain => ({ chain, rows: chain === 'bsc' ? [raw] : [] }) };
+  const fresh = observationVoiceSnapshot(state, ['bsc', 'sol', 'invalid'], live, at);
+  assert.deepEqual(Object.keys(fresh.chains), ['bsc', 'sol']); assert.deepEqual(fresh.chains.sol, []);
+  assert.equal(fresh.chains.bsc.length, 1); assert.equal(fresh.chains.bsc[0].retainedSnapshot, false);
+  const tracker = new VoiceAlerts(); tracker.reset(at - 1); tracker.ingest(snapshot([]), at - 1);
+  tracker.ingest(fresh, at); tracker.acknowledge(tracker.batch({}, at), at);
+  const retained = observationVoiceSnapshot(state, ['bsc'], null, at + 30_000);
+  tracker.ingest(retained, at + 30_000); assert.equal(tracker.batch({}, at + 30_000).length, 0);
+  state.liveLeads = []; raw.auditEligible = false; raw.discoveryState = 'PENDING';
+  assert.deepEqual(observationVoiceSnapshot(state, ['bsc'], live, at).chains.bsc, []);
+});
 
 test('quiet baseline, newly audited promotion, duplicate suppression and downgrade cancellation', () => {
   const tracker = new VoiceAlerts(); tracker.reset(now);
@@ -184,6 +235,16 @@ function mockSpeech(voices = [localVoice]) {
     schedule(fn) { timeout = fn; return 1; }, cancelTimer() { timeout = null; } });
   return { player, synthesis, utterances, expire() { timeout(); }, get cancellations() { return cancellations; } };
 }
+test('observation playback explicitly says safety is unverified in both supported languages', async () => {
+  const h = mockSpeech([localVoice, englishVoice]);
+  for (const language of ['zh', 'en']) {
+    h.player.unlock(language);
+    const playing = h.player.play(.5, { language, mode: 'observation' });
+    const utterance = h.utterances.at(-1);
+    assert.equal(utterance.text, OBSERVATION_PHRASES[language]);
+    utterance.onstart(); utterance.onend(); assert.equal(await playing, true);
+  }
+});
 test('voice selection prefers installed Chinese female voices and never falls back to cloud voices', () => {
   const male = { name: 'Male', lang: 'zh-CN', localService: true, default: true };
   const remote = { name: 'Xiaoxiao', lang: 'zh-CN', localService: false };

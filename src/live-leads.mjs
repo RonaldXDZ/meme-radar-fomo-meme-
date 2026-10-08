@@ -31,7 +31,8 @@ const safeUrl = value => {
 // A live lead is a durable display receipt for a token that passed a real,
 // fresh discovery screen. It deliberately preserves the original evidence
 // clocks: retaining a card must never make an old quote look fresh or make it
-// eligible for speech/audit again.
+// eligible for audit again. Observation speech uses the original qualification
+// clock and the same contract dedupe, not refreshed receipt timestamps.
 export function sanitizeLiveLead(source, fallbackChain = '') {
   if (!source || typeof source !== 'object') return null;
   const chain = text(source.chain || fallbackChain, 24).toLowerCase();

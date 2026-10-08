@@ -24,7 +24,7 @@ function dispatch(server, path, { method = 'POST', body = {}, extraHeaders = {} 
 }
 const tick = () => new Promise(resolve => setImmediate(resolve));
 
-test('verified-only alerts preserve observation leads but suppress cached recommendations and every voice chain', async () => {
+test('strict recommendations stay closed while separate unverified observation alerts remain available', async () => {
   const now = Date.now();
   const row = { address: '0x' + 'a'.repeat(40), chain: 'bsc', symbol: 'UNKNOWN',
     discoveryState: 'READY', auditEligible: true, stale: false, firstSeenAt: now - 1000,
@@ -35,7 +35,7 @@ test('verified-only alerts preserve observation leads but suppress cached recomm
   const value = { activeChain: 'bsc', candidates: [{ ...row, status: 'X_REVIEW' }], events, chainStates: {} };
   const original = JSON.stringify({ source, value });
   const server = createServer({ settings: { ...settings, requireVerifiedRiskEvidence: true },
-    state: { value }, supportedChains: ['sol', 'bsc'], liveDiscovery: { readSnapshot: () => source, touch: () => source } });
+    state: { value }, supportedChains: ['sol', 'bsc'], liveDiscovery: { readSnapshot: () => source, touch: () => source, snapshot: () => source } });
   const live = await dispatch(server, '/api/live-discovery', { body: { chain: 'bsc' } });
   assert.equal(live.status, 200);
   assert.equal(live.body.receivedCount, 100);
@@ -50,9 +50,13 @@ test('verified-only alerts preserve observation leads but suppress cached recomm
     assert.equal(result.status, 200);
     assert.deepEqual(result.body.candidates, []);
     assert.equal(result.body.recommendationGate.available, false);
-    assert.equal(result.body.voiceSnapshot.alertsAvailable, false);
+    assert.equal(result.body.voiceSnapshot.alertsAvailable, true);
+    assert.equal(result.body.voiceSnapshot.mode, 'observation');
     assert.ok(result.body.events.every(event => event.type !== 'CANDIDATE_NEW'));
-    for (const rows of Object.values(result.body.voiceSnapshot.chains)) assert.deepEqual(rows, []);
+    assert.equal(result.body.voiceSnapshot.chains.bsc.length, 1);
+    assert.equal(result.body.voiceSnapshot.chains.bsc[0].qualified, false);
+    assert.equal(result.body.voiceSnapshot.chains.bsc[0].recommendationEligible, false);
+    assert.equal(result.body.voiceSnapshot.chains.bsc[0].observationEligible, true);
     for (const scope of Object.values(result.body.chains || {})) {
       assert.deepEqual(scope.candidates, []);
       assert.ok(scope.events.every(event => event.type !== 'CANDIDATE_NEW'));
