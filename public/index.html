@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Meme雷达开源版</title>
+  <title>Meme雷达开源版 V2</title>
   <script>
     if (location.protocol === 'file:') location.replace('http://127.0.0.1:3791/' + location.hash);
   </script>
@@ -685,6 +685,53 @@
     #notice:empty { display: none; }
     @media (max-width: 1050px) { .live-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
     @media (max-width: 640px) { .shell { width: calc(100% - 24px); } .live-grid { grid-template-columns: 1fr; padding: 0 14px 14px; } .live-heading,.live-toolbar { padding-inline: 14px; } }
+    .neural-toolbar { display:flex; justify-content:space-between; align-items:center; padding:0 22px 10px; color:#88b7bd; font-size:14px; letter-spacing:.08em; }
+    .neural-toolbar label { cursor:pointer; letter-spacing:0; }
+    .neural-field { margin:0 22px 22px; border:1px solid #20444b; border-radius:16px; overflow:hidden; position:relative; background:radial-gradient(ellipse at center,#123e48 0%,#081b25 42%,#060f17 80%); contain:layout paint; }
+    .neural-field[hidden] { display:none; }
+    .neural-field svg { display:block; width:100%; max-height:430px; }
+    .neural-orbits { fill:none; stroke:#285967; stroke-width:1; stroke-dasharray:3 12; animation:neural-flow 28s linear infinite; }
+    .neural-arm { fill:none; stroke:#77f3f5; stroke-width:2.4; stroke-linecap:round; stroke-dasharray:none; stroke-dashoffset:0; opacity:.9; animation:neural-swim 12s ease-in-out infinite; }
+    .neural-node { opacity:1; animation:neural-swim 12s ease-in-out infinite; }
+    .neural-ambient { pointer-events:none; }
+    .neural-dust { fill:#69b7c7; opacity:0; animation:neural-emerge 8s ease-in-out infinite,neural-swim 12s ease-in-out infinite; }
+    .neural-feeler { fill:none; stroke:#54cbdc; stroke-width:1.8; stroke-linecap:round; stroke-dasharray:1; opacity:.7; animation:neural-connect 8s ease-in-out infinite,neural-swim 12s ease-in-out infinite; }
+    .neural-arm, .neural-node, .neural-dust, .neural-feeler { transform-box:view-box; transform-origin:500px 205px; }
+    .neural-phase-0 { animation-delay:0s; }
+    .neural-phase-1 { animation-delay:-1s; }
+    .neural-phase-2 { animation-delay:-2s; }
+    .neural-phase-3 { animation-delay:-3s; }
+    .neural-phase-4 { animation-delay:-4s; }
+    .neural-phase-5 { animation-delay:-5s; }
+    .neural-phase-6 { animation-delay:-6s; }
+    .neural-phase-7 { animation-delay:-7s; }
+    .neural-tempo-0 { animation-duration:5.3s,13.7s; }
+    .neural-tempo-1 { animation-duration:7.1s,18.3s; }
+    .neural-tempo-2 { animation-duration:9.7s,11.9s; }
+    .neural-tempo-3 { animation-duration:12.1s,16.7s; }
+    .neural-tempo-4 { animation-duration:6.7s,21.1s; }
+    .neural-tempo-5 { animation-duration:10.9s,14.3s; }
+    .neural-node circle { fill:#78deef; stroke:#3a8c9a; stroke-width:5; stroke-opacity:.25; }
+    .neural-node text { fill:#b0dbe1; font:14px system-ui,sans-serif; }
+    .neural-core circle { fill:#0b2732; stroke:#64e7ed; stroke-width:1.5; }
+    .neural-core text { fill:#bdffff; font:600 14px system-ui,sans-serif; letter-spacing:3px; }
+    .neural-core .neural-pulse { fill:none; transform-origin:500px 205px; animation:neural-breathe 4s ease-in-out infinite; }
+    .neural-selected { stroke:#90ffc7; opacity:1; }
+    .neural-selected circle { fill:#acffd0; stroke:#6affb5; }
+    .neural-selected text { fill:#acffd0; font-weight:bold; }
+    .neural-caption { text-align:center; padding:0 12px 14px; font-size:14px; color:#80a7b0; }
+    .live-card.voice-highlight { animation:neural-alert 2.8s ease-in-out 4; }
+    .neural-paused .neural-arm, .neural-paused .neural-node, .neural-background *, .neural-field[hidden] * { animation-play-state:paused !important; }
+    .neural-simple .voice-highlight { animation:none; }
+    @keyframes neural-flow { to { stroke-dashoffset:-224; } }
+    @keyframes neural-connect { 0%,15%,100% { stroke-dashoffset:1; opacity:0; } 48%,65% { stroke-dashoffset:0; opacity:.85; } 85% { stroke-dashoffset:1; opacity:0; } }
+    @keyframes neural-emerge { 0%,100% { opacity:0; } 15%,40% { opacity:.5; } 48%,65% { opacity:1; } 88% { opacity:0; } }
+    @keyframes neural-contact { 0%,100% { opacity:.45; } 40%,65% { opacity:1; } }
+    @keyframes neural-swim { 0%,100% { transform:rotate(-3deg) scale(.97); } 50% { transform:rotate(3deg) scale(1.02); } }
+    @keyframes neural-breathe { 50% { transform:scale(1.18); opacity:.35; } }
+    @keyframes neural-alert { 50% { border-color:#c0ffe1; box-shadow:0 0 22px #70dda940,inset 0 0 18px #70dda915; } }
+    @media (prefers-reduced-motion:reduce) { .neural-field *, .live-card.voice-highlight { animation:none !important; } }
+    @media (max-width:640px) { .neural-field { margin-inline:14px; } .neural-field svg { min-height:235px; } .neural-node text { font-size:16px; } }
   </style>
 </head>
 <body>
@@ -692,7 +739,7 @@
     <header>
       <div class="brand">
         <div class="mark">雷达</div>
-        <h1 data-i18n="appTitle">Meme雷达开源版</h1>
+        <h1 data-i18n="appTitle">Meme雷达开源版 V2</h1>
       </div>
       <div class="header-actions">
         <label class="language-control" for="languageSelect">
@@ -746,6 +793,9 @@
         <span id="liveState" role="status" aria-live="polite" class="live-tag"></span>
       </div>
       <div id="liveMeta" class="live-meta"></div>
+      <div id="neuralAlertRows" class="live-grid" hidden></div>
+      <div class="neural-toolbar"><span data-i18n="neuralTitle">神经扫描场</span><label><input id="neuralToggle" type="checkbox" checked> <span data-i18n="neuralMotion">动态视图</span></label></div>
+      <div id="neuralField" class="neural-field"></div>
       <div id="liveRows" class="live-grid"><div class="empty" data-i18n="preparing">准备中</div></div>
     </section>
 
@@ -931,6 +981,7 @@
       aveTestCancelled: ['测试已取消或配置已变更，未保存本次 Key','測試已取消或設定已變更，未儲存本次 Key','Test cancelled or configuration changed; this Key was not saved','テスト取消または設定変更。このキーは未保存','테스트 취소 또는 설정 변경; 이번 Key는 저장되지 않음','أُلغي الاختبار أو تغير الإعداد؛ لم يُحفظ هذا المفتاح'],
       aveTestUnknown: ['测试未完成，请查看连接诊断；不要发送 API Key','測試未完成，請查看連線診斷；不要傳送 API Key','Test incomplete; check diagnostics. Do not share your API Key','テスト未完了。診断を確認。APIキーは共有しないでください','테스트 미완료; 진단 확인. API Key를 공유하지 마세요','لم يكتمل الاختبار؛ راجع التشخيص ولا تشارك مفتاح API'],
       liveTitle: ['候选雷达','候選雷達','Candidate radar','候補レーダー','후보 레이더','رادار المرشحين'],
+      liveNoCandidates: ['暂无符合条件的币','暫無符合條件的幣','No matching tokens yet','条件に合うトークンはまだありません','조건에 맞는 토큰이 아직 없습니다','لا توجد رموز مطابقة حاليًا'],
       advancedTitle: ['设置与运行记录','設定與執行記錄','Settings & activity','設定と履歴','설정 및 활동','الإعدادات والنشاط'],
       autoScreenPassed: ['自动筛选通过','自動篩選通過','Auto-screen passed','自動選別通過','자동 선별 통과','اجتاز الفرز الآلي'],
       autoScreenWaiting: ['资料待补全','資料待補全','Missing evidence','データ待ち','자료 대기','بيانات ناقصة'],
@@ -1011,7 +1062,7 @@
       riskAlert: ['风险或证据状态恶化，请重新复核','風險或證據狀態惡化，請重新複核','Risk or evidence worsened; review again','リスク・証拠状態が悪化。再確認してください','위험 또는 근거 상태 악화; 재검토 필요','تدهورت المخاطر أو الأدلة؛ راجع مجددًا'],
       failureAlert: ['扫描长时间未成功，请检查连接','掃描長時間未成功，請檢查連線','No successful scan for an extended period; check connectivity','スキャン成功が長時間ありません。接続を確認してください','장시간 스캔 성공 없음; 연결 확인 필요','لم ينجح المسح منذ فترة؛ تحقق من الاتصال'],
       notificationUnavailable: ['浏览器未允许通知，页面事件仍可查看','瀏覽器未允許通知，仍可查看頁面事件','Notifications unavailable; in-page events remain available','通知を利用できません。ページ内履歴は表示されます','알림을 사용할 수 없습니다. 페이지 기록은 유지됩니다','الإشعارات غير متاحة؛ تبقى أحداث الصفحة'],
-      appTitle: ['Meme雷达开源版', 'Meme雷達開源版', 'Meme Radar Open Source', 'Memeレーダー オープンソース版', 'Meme 레이더 오픈 소스판', 'رادار Meme مفتوح المصدر'],
+      appTitle: ['Meme雷达开源版 V2', 'Meme雷達開源版 V2', 'Meme Radar Open Source V2', 'Memeレーダー オープンソース版 V2', 'Meme 레이더 오픈 소스판 V2', 'رادار Meme مفتوح المصدر V2'],
       languageLabel: ['语言', '語言', 'Language', '言語', '언어', 'اللغة'],
       languageAria: ['选择语言', '選擇語言', 'Select language', '言語を選択', '언어 선택', 'اختيار اللغة'],
       waitingState: ['等待状态', '等待狀態', 'Waiting', '待機中', '대기 중', 'في الانتظار'],
@@ -1155,7 +1206,10 @@
       statusChain: ['自动筛选通过','自動篩選通過','Auto-screen passed','自動選別通過','자동 선별 통과','اجتاز الفرز الآلي'],
       statusWaiting: ['等待复查', '等待複查', 'Waiting for recheck', '再確認待ち', '재검토 대기', 'بانتظار إعادة الفحص'],
       statusRejected: ['硬门淘汰', '硬門淘汰', 'Hard-gate rejected', '必須条件で除外', '필수 조건 탈락', 'مرفوض بالبوابة الصارمة'],
-      chainBsc: ['BNB链', 'BNB鏈', 'BNB Chain', 'BNBチェーン', 'BNB 체인', 'شبكة BNB'],
+      neuralTitle: ['神经扫描场','神經掃描場','Neural field','ニューラルフィールド','뉴럴 필드','المجال العصبي'],
+      neuralMotion: ['动态视图','動態視圖','Animated view','動的表示','동적 보기','عرض متحرك'],
+      neuralNote: ['真实候选节点 · 动画仅为视觉表现，不代表逐币实时请求','真實候選節點 · 動畫僅為視覺表現，不代表逐幣即時請求','Actual candidates · Animation does not indicate per-token live requests','実候補・アニメーションは個別のリアルタイム取得を示しません','실제 후보 · 애니메이션은 개별 실시간 요청을 의미하지 않습니다','مرشحون فعليون · الحركة لا تعني طلبات لحظية لكل عملة'],
+      chainBsc: ['BSC链', 'BSC鏈', 'BSC', 'BSCチェーン', 'BSC 체인', 'شبكة BSC'],
       chainEth: ['以太坊', '以太坊', 'Ethereum', 'イーサリアム', '이더리움', 'إيثريوم'],
       chainRobinhood: ['罗宾汉链', '羅賓漢鏈', 'Robinhood Chain', 'Robinhoodチェーン', '로빈후드 체인', 'شبكة Robinhood'],
       chainOfflineHint: ['本地服务离线，暂时不能切换链路', '本地服務離線，暫時不能切換鏈路', 'Local service is offline; chain switching is unavailable', 'ローカルサービスがオフラインのため切替できません', '로컬 서비스가 오프라인이라 체인을 바꿀 수 없습니다', 'الخدمة المحلية غير متصلة؛ لا يمكن تبديل الشبكة'],
@@ -1505,8 +1559,8 @@
       try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
     }
     let manualMarks = readStorage('robinhoodRadarManualMarksV1', {});
-    let viewChain = readStorage('memeRadarViewChainV1', '');
-    if (!chainCatalog.some(function (chain) { return chain.id === viewChain; })) viewChain = '';
+    // Every page opening starts on BSC, independent of the previous tab selection.
+    let viewChain = 'bsc';
     let liveEnabled = readStorage('memeRadarLiveEnabledV1', true) !== false;
     let liveData = null;
     let liveBusy = false;
@@ -1574,7 +1628,10 @@
           + '</div><div class="manage-actions"><button class="mini-button" data-saved-action="favorite" data-chain="' + escapeHtml(row.chain) + '" data-address="' + encodeURIComponent(row.address) + '">'
           + escapeHtml(t(row.favorite ? 'unfavorite' : 'favorite')) + '</button><button class="mini-button" data-saved-action="note" data-chain="' + escapeHtml(row.chain) + '" data-address="' + encodeURIComponent(row.address) + '">' + escapeHtml(t('editNote')) + '</button></div></div>';
       }).join('') || '<span class="muted">' + escapeHtml(t('none')) + '</span>';
-      const alerts = (data.events || []).filter(function (event) { return ['CANDIDATE_NEW','RISK_WORSENED'].includes(event.type) && Date.now() - event.at < 30 * 60000; });
+      const alerts = (data.events || []).filter(function (event) {
+        return ['CANDIDATE_NEW','RISK_WORSENED'].includes(event.type) && Date.now() - event.at < 30 * 60000
+          && !(event.type === 'CANDIDATE_NEW' && data.recommendationGate?.available === false);
+      });
       byId('importantAlerts').innerHTML = alerts.slice(0, 3).map(function (event) {
         return '<div class="event"><time>' + escapeHtml(formatClock(event.at)) + '</time><span>' + escapeHtml(event.chain.toUpperCase() + ' · ' + eventText(event.message)) + '</span></div>';
       }).join('');
@@ -1800,7 +1857,7 @@
       // sanitized live rows before rendering so a spoken token is present in
       // the card pool immediately, even if the separate feed refresh is late.
       const voiceRows = voiceSpotlightSnapshot && voiceSpotlightSnapshot.chains && voiceSpotlightSnapshot.chains[chain];
-      (Array.isArray(voiceRows) ? voiceRows : []).filter(function (row) {
+      (lastData?.recommendationGate?.available === false || data?.recommendationGate?.available === false ? [] : Array.isArray(voiceRows) ? voiceRows : []).filter(function (row) {
         const evidenceAt = row.sourceUpdatedAt || row.auditedAt;
         return row.source === 'live' && row.status === 'LIVE_READY' && row.qualified === true
           && row.auditedAt > 0 && row.auditedAt <= now && now - row.auditedAt <= 10 * 60000
@@ -1830,6 +1887,7 @@
     }
     function voiceSpotlightState(entry, now) {
       if (!entry || !voiceSpotlight) return 'voiceSpotlightMissing';
+      if (lastData?.recommendationGate?.available === false) return 'voiceSpotlightChanged';
       const key = voiceSpotlightKey(entry), mark = manualMarks[key] || (entry.chain === 'robinhood' ? manualMarks[addressIdentity(entry.address)] : null);
       if (mark && mark.decision === 'ignored') return 'voiceSpotlightIgnored';
       const rows = voiceSpotlightSnapshot && voiceSpotlightSnapshot.chains && voiceSpotlightSnapshot.chains[entry.chain];
@@ -2074,6 +2132,9 @@
 
     function ensureVisibleChain(data) {
       if (!viewChain) return false;
+      // Viewing the default chain must not silently enable extra API polling.
+      // Keep BSC visible even if it is not currently in the user's scan rotation.
+      if (viewChain === 'bsc') return false;
       const enabled = data && data.scheduler && Array.isArray(data.scheduler.enabledChains)
         ? data.scheduler.enabledChains.map(function (value) { return String(value).toLowerCase(); }) : [];
       if (!enabled.length || enabled.includes(viewChain)) return false;
@@ -2360,8 +2421,8 @@
     function liveEmptyMessage(data, query, stale, status) {
       if (query) return t('liveFilteredEmpty');
       if (stale && data?.lastSuccessAt) return t('liveStale');
-      if (data?.receivedCount > 0) return t(data.diagnostics?.outsideRange === data.receivedCount ? 'liveNoScope' : 'liveExcluded');
-      return t(data?.lastSuccessAt ? 'liveEmpty' : status);
+      if (data?.receivedCount > 0 || data?.lastSuccessAt) return t('liveNoCandidates');
+      return t(status);
     }
 
     function renderLive() {
@@ -2385,6 +2446,7 @@
       liveState.textContent = rateLimitShownAbove ? '' : t(status);
       const query = byId('liveSearch').value.trim().toLowerCase(), mode = byId('liveSort').value;
       const observedRows = unifiedPoolRows(chain);
+      renderNeuralField(observedRows, stale || !serviceOnline || !liveEnabled || updateFailed || status !== 'liveReady');
       let rows = observedRows.filter(function (row) {
         return Number.isFinite(voiceSpotlightRank(row, Date.now()))
           || !query || [row.symbol, row.name, row.address].join(' ').toLowerCase().includes(query);
@@ -2431,6 +2493,86 @@
             quote: row.sourceUpdatedAt ? relativeTime(row.sourceUpdatedAt) : t('noRecord') })) + '</small>' + links + '</article>';
       }).join('') || '<div class="empty">' + escapeHtml(liveEmptyMessage(data, query, stale, status))
         + (query ? '<p><button class="mini-button" type="button" data-live-reset>' + escapeHtml(t('liveShowAll')) + '</button></p>' : '') + '</div>';
+      const frontRow = byId('neuralAlertRows');
+      frontRow.replaceChildren();
+      byId('liveRows').querySelectorAll('.voice-highlight').forEach(function (card) { frontRow.appendChild(card); });
+      frontRow.hidden = !frontRow.childElementCount;
+    }
+
+    function renderNeuralField(rows, paused) {
+      const host = byId('neuralField');
+      if (!host) return;
+      const enabled = readStorage('memeRadarNeuralV1', true) !== false;
+      byId('neuralToggle').checked = enabled;
+      host.hidden = !enabled;
+      host.classList.toggle('neural-paused', paused || document.hidden);
+      if (!enabled) return;
+      const nodes = rows.slice().sort(function (a, b) {
+        return voiceSpotlightRank(a, Date.now()) - voiceSpotlightRank(b, Date.now()) || voiceSpotlightKey(a).localeCompare(voiceSpotlightKey(b));
+      }).slice(0, 36);
+      const signature = JSON.stringify([currentLocale, nodes.map(function (row) {
+        return [voiceSpotlightKey(row), row.symbol, Number.isFinite(voiceSpotlightRank(row, Date.now()))];
+      })]);
+      if (host.dataset.signature === signature) return;
+      host.dataset.signature = signature;
+      // Purely decorative geometry. Never enters token rows, counts or alerts.
+      const ambient = [];
+      // A page-local seed varies the scene between visits, not on every poll.
+      if (!host.dataset.seed) host.dataset.seed = String(Math.floor(Math.random() * 4294967295) || 1);
+      let seed = Number(host.dataset.seed) >>> 0;
+      const random = function () {
+        seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+        return seed / 4294967296;
+      };
+      for (let index = 0; index < 60; index++) {
+        const angle = random() * Math.PI * 2;
+        const radius = 0.24 + Math.sqrt(random()) * 0.71;
+        const x = 500 + Math.cos(angle) * 455 * radius;
+        const y = 205 + Math.sin(angle) * 184 * radius;
+        const phase = ' neural-phase-' + Math.floor(random() * 8) + ' neural-tempo-' + Math.floor(random() * 6);
+        ambient.push('<circle data-spark="' + index + '" class="neural-dust' + phase + '" cx="' + x + '" cy="' + y + '" r="' + (1.2 + random() * 1.4) + '"/>');
+        if (index % 5 < 2) {
+          const bend = (random() - 0.5) * 2.4;
+          const reach = 100 + random() * 150;
+          const rest = 'M500 205 Q' + (500 + Math.cos(angle + bend) * reach) + ' ' + (205 + Math.sin(angle + bend) * reach * 0.6) + ' ' + x + ' ' + y;
+          ambient.push('<path data-spark-arm="' + index + '" class="neural-feeler' + phase + '" pathLength="1" d="' + rest + '"/>');
+        }
+      }
+      const paths = [], points = [];
+      nodes.forEach(function (row, index) {
+        // Deterministic lanes prevent the field jumping around on every poll.
+        let hash = 0;
+        for (const char of voiceSpotlightKey(row)) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+        const angle = index / nodes.length * Math.PI * 2;
+        const radius = 0.65 + (hash % 30) / 100;
+        const x = 500 + Math.cos(angle) * 425 * radius, y = 205 + Math.sin(angle) * 162 * radius;
+        const selected = Number.isFinite(voiceSpotlightRank(row, Date.now()));
+        const curve = 'M500 205 Q' + (500 + Math.cos(angle + 0.7) * 150) + ' ' + (205 + Math.sin(angle + 0.7) * 90) + ' ' + x + ' ' + y;
+        const phase = ' neural-phase-' + index % 8;
+        paths.push('<path class="neural-arm' + (selected ? ' neural-selected' : '') + phase + '" pathLength="1" d="' + curve + '"/>');
+        points.push('<g class="neural-node' + (selected ? ' neural-selected' : '') + phase + '"><title>' + escapeHtml(row.symbol + ' · ' + row.address) + '</title><circle cx="' + x + '" cy="' + y + '" r="' + (selected ? 8 : 4) + '"/><text x="' + x + '" y="' + (y - 15) + '" text-anchor="middle">' + escapeHtml(String(row.symbol || '').slice(0, 14)) + '</text></g>');
+      });
+      host.innerHTML = '<svg viewBox="0 0 1000 410" role="img" aria-label="' + escapeHtml(t('neuralTitle')) + '"><g class="neural-orbits"><ellipse cx="500" cy="205" rx="425" ry="175"/><ellipse cx="500" cy="205" rx="295" ry="120"/><circle cx="500" cy="205" r="72"/></g>'
+        + '<g class="neural-ambient" aria-hidden="true">' + ambient.join('') + '</g>'
+        + paths.join('') + '<g class="neural-core"><circle cx="500" cy="205" r="44"/><circle class="neural-pulse" cx="500" cy="205" r="55"/><text x="500" y="210" text-anchor="middle">RADAR</text></g>' + points.join('') + '</svg>';
+    }
+
+    function relocateNeuralSpark(event) {
+      // Change only an invisible decorative node between cycles. No timer,
+      // data request, candidate mutation or speech event is involved.
+      if (event.animationName !== 'neural-emerge' || document.hidden) return;
+      const dot = event.target;
+      if (!dot.classList.contains('neural-dust') || !/^\d{1,2}$/.test(dot.dataset.spark || '')) return;
+      const field = byId('neuralField');
+      if (field.hidden) return;
+      const angle = Math.random() * Math.PI * 2, radius = .24 + Math.sqrt(Math.random()) * .71;
+      const x = 500 + Math.cos(angle) * 455 * radius, y = 205 + Math.sin(angle) * 184 * radius;
+      dot.setAttribute('cx', x); dot.setAttribute('cy', y);
+      const arm = field.querySelector('[data-spark-arm="' + dot.dataset.spark + '"]');
+      if (arm) {
+        const bend = (Math.random() - .5) * 2.4, reach = 100 + Math.random() * 150;
+        arm.setAttribute('d', 'M500 205 Q' + (500 + Math.cos(angle + bend) * reach) + ' ' + (205 + Math.sin(angle + bend) * reach * .6) + ' ' + x + ' ' + y);
+      }
     }
 
     async function refreshLive() {
@@ -2573,7 +2715,7 @@
     }
     function aveFeedbackText(input) {
       const feedback = safeAveFeedback(input.code, input.retryAt);
-      return t(aveFeedbackKeys[feedback.code]) + ' · ' + feedback.code
+      return t(aveFeedbackKeys[feedback.code])
         + (feedback.retryAt > Date.now() ? ' · ' + t('aveTestRetryAt', { time: formatClock(feedback.retryAt) }) : '');
     }
     function renderAveConnection(snapshot) {
@@ -2634,7 +2776,11 @@
         document.querySelectorAll('.ave-settings button').forEach(button => { button.disabled = false; });
       }
     }
+    let refreshBusy = false, refreshQueued = false, refreshChain = null, refreshFailures = 0, refreshTimer;
     async function refresh() {
+      if (refreshBusy) { if (viewChain !== refreshChain) refreshQueued = true; return; }
+      clearTimeout(refreshTimer);
+      refreshBusy = true; refreshChain = viewChain;
       const requestSequence = ++refreshSequence, requestChain = viewChain;
       try {
         const response = await fetch('/api/status' + (viewChain ? '?chain=' + encodeURIComponent(viewChain) : ''), { cache: 'no-store', signal: AbortSignal.timeout(10000) });
@@ -2643,10 +2789,11 @@
         if (requestSequence < acceptedRefresh || requestChain !== viewChain) return;
         if (ensureVisibleChain(data)) {
           acceptedRefresh = requestSequence;
-          await refresh();
+          refreshQueued = true;
           return;
         }
         acceptedRefresh = requestSequence;
+        refreshFailures = 0;
         serviceOnline = true;
         offlineSince = 0;
         render(data);
@@ -2654,6 +2801,7 @@
       } catch {
         if (requestSequence < acceptedRefresh || requestChain !== viewChain) return;
         acceptedRefresh = requestSequence;
+        refreshFailures = Math.min(4, refreshFailures + 1);
         window.dispatchEvent(new CustomEvent('radar-offline'));
         if (!offlineSince) offlineSince = Date.now();
         if (Date.now() - offlineSince > 5 * 60000) desktopAlert('offline:' + offlineSince, t('failureAlert'), t('localOffline'), Date.now());
@@ -2666,6 +2814,11 @@
         byId('notice').textContent = t('serviceOfflineNotice');
         renderChainSwitcher(null);
         renderTelemetry();
+      } finally {
+        refreshBusy = false;
+        const delay = refreshQueued ? 0 : document.hidden ? 30000 : Math.min(30000, 3000 * 2 ** refreshFailures);
+        refreshQueued = false;
+        refreshTimer = setTimeout(refresh, delay);
       }
     }
 
@@ -2741,11 +2894,22 @@
     attachVoiceSpotlight();
     byId('searchInput').addEventListener('input', renderCandidates);
     byId('liveSearch').addEventListener('input', renderLive);
+    byId('neuralField').addEventListener('animationiteration', relocateNeuralSpark);
+    byId('neuralToggle').addEventListener('change', function (event) {
+      writeStorage('memeRadarNeuralV1', event.target.checked);
+      document.body.classList.toggle('neural-simple', !event.target.checked);
+      renderLive();
+    });
+    document.body.classList.toggle('neural-simple', readStorage('memeRadarNeuralV1', true) === false);
+    document.body.classList.toggle('neural-background', document.hidden);
+    document.addEventListener('visibilitychange', function () {
+      document.body.classList.toggle('neural-background', document.hidden);
+    });
     byId('liveSort').addEventListener('change', renderLive);
     byId('liveAuto').addEventListener('change', function (event) {
       liveEnabled = event.target.checked; writeStorage('memeRadarLiveEnabledV1', liveEnabled); refreshLive();
     });
-    byId('liveRows').addEventListener('click', async function (event) {
+    byId('livePanel').addEventListener('click', async function (event) {
       if (event.target.closest('[data-live-reset]')) {
         byId('liveSearch').value = ''; byId('liveSort').value = 'priority'; renderLive(); return;
       }
@@ -2851,14 +3015,13 @@
     setLocale(storedLocale, false);
     renderChainSwitcher(null);
     if (location.protocol !== 'file:') {
-      startParticleField();
+      // Neural animation is CSS-driven; do not start the legacy particle loop.
       refresh();
       refreshLive();
       setInterval(refreshLive, 5000);
-      document.addEventListener('visibilitychange', function () { if (!document.hidden) refreshLive(); });
-      setInterval(refresh, 3000);
-      setInterval(renderTelemetry, 1000);
-      setInterval(renderCandidates, 60000);
+      document.addEventListener('visibilitychange', function () { if (!document.hidden) { refresh(); refreshLive(); } });
+      setInterval(function () { if (!document.hidden) renderTelemetry(); }, 1000);
+      setInterval(function () { if (!document.hidden) renderCandidates(); }, 60000);
     }
   </script>
 </body>

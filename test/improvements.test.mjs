@@ -116,7 +116,8 @@ test('settings endpoints validate origin/schema; view/export exposes whitelisted
   const dir=temp(t), controls=new RadarControls(dir,config.supportedChains,'bsc');
   const state={value:{activeChain:'bsc',status:'RUNNING',supportedChains:config.supportedChains,
     privateKey:'do-not-leak',candidates:[{ address, status:'HARD_REJECT', auditHealth:{earlyExit:true,private:'do-not-leak'}, deep:{wallets:{botHoldRate:0,linkedHoldRate:0,ordinaryCount:0},sellability:{distinctSellers:0}} }],chainStates:{sol:{scanCount:5,candidates:[]}},outcomes:[{address,baselinePrice:1,raw:'do-not-leak',samples:{m30:{return:.1,price:1.1,private:'do-not-leak'}}}]}};
-  const server=createServer({state,controls,settings:{...config,publicDir:path.join(root,'public')}});
+  // Exercise the historical projection schema independently of production containment.
+  const server=createServer({state,controls,settings:{...config,requireVerifiedRiskEvidence:false,publicDir:path.join(root,'public')}});
   assert.equal((await dispatch(server,'POST','/api/scan-chains',{chains:['sol','bsc']})).status,200);
   assert.equal((await dispatch(server,'POST','/api/scan-chains',{chains:['sol'],trade:true})).status,400);
   assert.equal((await dispatch(server,'POST','/api/scan-chains',{chains:['sol']},false)).status,403);

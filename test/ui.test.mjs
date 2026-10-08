@@ -8,6 +8,19 @@ import { fileURLToPath } from 'node:url';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const html = fs.readFileSync(path.join(here, '..', 'public', 'index.html'), 'utf8');
 
+test('each opening starts on BSC without restoring a previously selected chain', () => {
+  assert.match(html, /let viewChain = 'bsc';/);
+  assert.doesNotMatch(html, /let viewChain = readStorage/);
+  assert.match(html, /chainBsc: \['BSC链', 'BSC鏈'/);
+  assert.doesNotMatch(html, /BNB链/);
+  const start = html.indexOf('    function ensureVisibleChain(data)');
+  const end = html.indexOf('    function renderChainSwitcher', start);
+  const context = { viewChain: 'bsc' };
+  vm.runInNewContext(html.slice(start, end) + ';this.changed=ensureVisibleChain({scheduler:{enabledChains:["sol","base"]}});', context);
+  assert.equal(context.changed, false);
+  assert.equal(context.viewChain, 'bsc');
+});
+
 function liveRefreshHarness(fetch) {
   const previous = { chain: 'bsc', rows: [{ symbol: 'PREVIOUS' }] };
   const context = { fetch, AbortSignal, document: { hidden: false },
@@ -117,7 +130,8 @@ test('AVE failed retest updates the Data badge while retaining the failure notic
   await context.change('configure');
   assert.equal(elements['ave-data-status'].textContent, 'aveFailed');
   assert.equal(elements['aveSummary'].textContent, ' · aveKeySaved');
-  assert.match(elements['ave-config-status'].textContent, /AVE_AUTH/);
+  assert.equal(elements['ave-config-status'].textContent, 'aveTestAuth');
+  assert.doesNotMatch(elements['ave-config-status'].textContent, /AVE_AUTH/);
 });
 
 const AVE_UI_AT = Date.UTC(2026, 8, 30, 12);
@@ -159,6 +173,7 @@ test('AVE connection feedback distinguishes budgets, queue wait and real network
     elements['ave-api-key'].value = 'synthetic-form-key';
     await context.changeAve('configure');
     assert.match(elements['ave-config-status'].textContent, new RegExp('zh-CN:' + message));
+    assert.doesNotMatch(elements['ave-config-status'].textContent, /AVE_[A-Z_]+/);
     assert.match(elements['ave-config-status'].textContent, new RegExp('clock:' + retryAt));
     assert.equal(elements['ave-data-status'].textContent, 'zh-CN:' + (snapshot.data.status === 'waiting' ? 'aveDeferred' : 'aveFailed'));
     assert.equal(elements['ave-api-key'].value, '');
@@ -255,7 +270,7 @@ test('所有显式像素字号均不小于14像素', () => {
 });
 
 test('看板明确区分累计、本轮和近30分钟口径', () => {
-  assert.match(html, /<h1[^>]*>Meme雷达开源版<\/h1>/);
+  assert.match(html, /<h1[^>]*>Meme雷达开源版 V2<\/h1>/);
   assert.match(html, /class="mark">雷达<\/div>/);
   assert.match(html, /扫描轮次[\s\S]*累计/);
   assert.match(html, /发现代币[\s\S]*本轮/);
@@ -456,11 +471,11 @@ test('筛选原因默认折叠，缺失统计不伪造零，行情初筛不标�
 
 test('候选空池区分过期行情和当前筛选失败，不能把缓存过期误写成风险排除', () => {
   const start = html.indexOf('function liveEmptyMessage('), end = html.indexOf('function renderLive(', start);
-  const context = { t: value => value };
+  const context = { t: value => value, lastData: null };
   vm.runInNewContext(html.slice(start, end) + ';this.show=liveEmptyMessage;', context);
   const source = { lastSuccessAt: 1234, receivedCount: 100, diagnostics: { outsideRange: 0 } };
   assert.equal(context.show(source, '', true, 'liveReady'), 'liveStale');
-  assert.equal(context.show(source, '', false, 'liveReady'), 'liveExcluded');
+  assert.equal(context.show(source, '', false, 'liveReady'), 'liveNoCandidates');
   assert.equal(context.show(source, 'query', true, 'liveReady'), 'liveFilteredEmpty');
   assert.equal(context.show(null, '', true, 'aveApiNetwork'), 'aveApiNetwork');
 });

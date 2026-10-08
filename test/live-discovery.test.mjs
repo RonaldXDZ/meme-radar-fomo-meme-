@@ -18,6 +18,13 @@ const token = (id = 1, overrides = {}) => ({ address:'0x'+id.toString(16).padSta
   capturedAt:now,sourceUpdatedAt:now,expiresAt:now+30000,price:'1',volume_5m:1000,volume:1000,buys:10,sells:5,swaps:15,
   holder_count:100,smart_degen_count:3,rug_ratio:.1,bundler_rate:.1,rat_trader_amount_rate:.1,is_wash_trading:false,is_honeypot:0,...overrides });
 const options = provider => ({provider,now:()=>now,schedule:()=>({unref(){}}),cancel:()=>{}});
+test('known risks remove previously visible live candidates instead of retaining them as pending', () => {
+  const previous = normalizeLiveRows([token()], 'bsc', [], now, true);
+  assert.equal(previous.length, 1);
+  for (const risk of [{is_wash_trading:true},{is_honeypot:true},{is_open_source:false},{open_source:'0'}]) {
+    assert.deepEqual(normalizeLiveRows([token(1,risk)], 'bsc', previous, now, true), []);
+  }
+});
 const flushBackground = () => new Promise(resolve => setImmediate(resolve));
 const deferred = () => { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; };
 const overlayRow = (row, at, changes = {}) => ({ ...row, capturedAt: at, sourceUpdatedAt: at, expiresAt: at + 20_000,

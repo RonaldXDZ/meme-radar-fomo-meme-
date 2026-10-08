@@ -58,8 +58,11 @@ test('AVE live endpoint allowlists fields, keeps quote expiry and supplies the a
   assert.equal(snapshot.rows[1].stale, false, 'projection must not mutate retained data');
   assert.doesNotMatch(JSON.stringify(response), /raw-private-fixture|"raw"/);
   const html = readFileSync(new URL('../public/index.html', import.meta.url), 'utf8');
-  const elements = Object.fromEntries(['liveAuto', 'liveState', 'liveSearch', 'liveSort', 'liveMeta', 'liveRows']
+  const elements = Object.fromEntries(['liveAuto', 'liveState', 'liveSearch', 'liveSort', 'liveMeta', 'liveRows', 'neuralAlertRows']
     .map(id => [id, { value: '', textContent: '', innerHTML: '', hidden: false }]));
+  elements.liveRows.querySelectorAll = () => [];
+  elements.neuralAlertRows.replaceChildren = () => {};
+  elements.neuralAlertRows.childElementCount = 0;
   const context = { Date: class extends Date { static now() { return now; } }, viewChain: 'bsc', liveData: response.body,
     lastData: { scheduler: { enabledChains: ['bsc'] } }, liveEnabled: true, serviceOnline: true,
     liveRefreshErrorChain: '', liveFingerprint: '', liveQueued: new Map(),
@@ -111,6 +114,13 @@ test('AVE live endpoint allowlists fields, keeps quote expiry and supplies the a
   assert.match(elements.liveRows.innerHTML, /launchAge/); assert.doesNotMatch(elements.liveRows.innerHTML, /poolAge/);
   context.liveData = response.body;
   elements.liveSort.value = 'new';
+  context.lastData.recommendationGate = { available: false };
+  vm.runInNewContext(draw, context);
+  assert.match(elements.liveRows.innerHTML, /MOCK/, 'unverified leads remain visible as observations');
+  assert.match(elements.liveRows.innerHTML, /liveEligible/);
+  assert.doesNotMatch(elements.liveRows.innerHTML, /riskEvidenceWaiting|RISK_EVIDENCE_UNAVAILABLE|voice-highlight/);
+  assert.equal(elements.liveState.textContent, 'liveReady');
+  delete context.lastData.recommendationGate;
   vm.runInNewContext(draw, context);
   assert.match(elements.liveRows.innerHTML, /MOCK/); assert.doesNotMatch(elements.liveRows.innerHTML, /liveFilteredEmpty/);
   elements.liveSearch.value = 'no-match';

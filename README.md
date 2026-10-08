@@ -2,16 +2,16 @@
 
 作者：**DeFi狙击手** · X：[@bi_9527zx](https://x.com/bi_9527zx)
 
-本地运行的多链 Meme 候选雷达。AVE 负责热榜发现；受支持链使用批量 DexScreener 行情补齐卡片，不额外消耗 AVE CU。默认快速扫描不逐币进行 GoPlus 或 K 线深审。当前版本 **v0.1.12**，按免费 API 的请求限制设计。
+本地运行的多链 Meme 观察雷达。AVE 负责热榜发现；受支持链使用批量 DexScreener 行情补齐卡片，不额外消耗 AVE CU。默认快速扫描不逐币进行 GoPlus 或 K 线深审。当前版本 **v2.0.0**，按免费 API 的请求限制设计。
 
-### v0.1.12 更新重点
+### v2.0.0 更新重点
 
-- 修复 API 连接检测排队过久、被误报为网络失败的问题；暂时不能发起测试时立即说明原因。
-- 区分请求等待、限频、额度不足、Key 无效与网络异常；有可靠重试时间时直接显示。
-- 测试结果不再被页面自动刷新覆盖；取消或超时不会在后台继续保存 Key，更换失败保留原配置。
-- 保留免费 API 的限频和预算保护；中英文语音、提醒置顶、多链候选和 AVE 快捷入口不变。
+- 动态中心雷达、伸缩触手与游动节点；真实候选具名并持续连线，无名装饰不触发提醒。
+- 默认打开 BSC，卡片直达 AVE；保留中英文语音组件，未核验线索不播报、不作推荐置顶。
+- 请求串行与失败退避，行情补全轮换，保留免费 API 的限频和预算保护。
+- 改善 macOS 后台启动和退出恢复，保留简洁视图及减少动态效果适配。
 
-完整说明见 [v0.1.12 更新记录](docs/RELEASE-NOTES-v0.1.12.md)。
+完整说明见 [v2.0.0 更新记录](docs/RELEASE-NOTES-v2.0.0.md)。
 
 使用与配置教程请查看 X：[@bi_9527zx](https://x.com/bi_9527zx) 的置顶内容。
 
@@ -33,9 +33,11 @@
 
 ## 下载
 
-- [Windows x64 一键便携版](https://github.com/nhovongoc0-max/meme-radar/releases/download/v0.1.12/MemeRadar-OpenSource-Windows-x64-0.1.12.zip)
-- [macOS 版](https://github.com/nhovongoc0-max/meme-radar/releases/download/v0.1.12/MemeRadar-OpenSource-macOS-0.1.12.zip)
-- [SHA-256 校验文件](https://github.com/nhovongoc0-max/meme-radar/releases/download/v0.1.12/SHA256SUMS-0.1.12.txt)
+请完整解压后启动；升级前关闭旧版并备份本机配置。
+
+- [Windows x64 一键便携版](https://github.com/nhovongoc0-max/meme-radar/releases/download/v2.0.0/MemeRadar-OpenSource-Windows-x64-2.0.0.zip)
+- [macOS 版](https://github.com/nhovongoc0-max/meme-radar/releases/download/v2.0.0/MemeRadar-OpenSource-macOS-2.0.0.zip)
+- [SHA-256 校验文件](https://github.com/nhovongoc0-max/meme-radar/releases/download/v2.0.0/SHA256SUMS-2.0.0.txt)
 
 也可以在 [Releases](https://github.com/nhovongoc0-max/meme-radar/releases) 页面查看版本说明与文件校验值。
 
@@ -107,6 +109,8 @@ Windows 便携版在新目录使用 `runtime\node.exe` 替代上面的 `node`。
 ## 即时发现窗口
 
 ### 语音提醒与风险过滤
+
+**V2 当前提醒限制：** AVE 收录状态和关联持仓风险尚无可靠证据适配器，自动候选推荐提醒（语音、置顶、桌面新币通知）暂不触发；正常展示“初筛 · 未核验”观察线索，风险恶化及连接问题通知不受影响。可以试听中英文声音。下述提醒组件规则只有在取得合格证据、恢复提醒资格后才适用，不能把试听当作推荐功能已启用。
 
 每次实际播报开始时，顶部显示本次提醒币卡片与批次选择；当前列表中的有效提醒币置顶高亮。跨链可点击定位，过期或被排除后会取消置顶，试听不会制造提醒币。
 

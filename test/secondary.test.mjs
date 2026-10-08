@@ -246,6 +246,22 @@ test('batch market overlay shares in-flight work, caches it and fails back to or
   assert.equal(original[0], row);
 });
 
+test('batch rotation reaches tail candidates without adding calls within the same cadence', async () => {
+  let at = 1800000000000;
+  const requests = [];
+  const rows = Array.from({ length: 75 }, (_, i) => ({ chain: 'bsc', marketProvider: 'AVE',
+    address: '0x' + (i + 1).toString(16).padStart(40, '0'), market_cap: 50000 }));
+  const overlay = new DexBatchMarketOverlay({ now: () => at,
+    fetchImpl: async url => { requests.push(url.split('/').at(-1).split(',')); return jsonResponse([]); } });
+  for (let round = 0; round < 3; round++) {
+    await Promise.all(Array.from({ length: 10 }, () => overlay.enrich('bsc', rows)));
+    assert.equal(requests.length, round + 1); at += 20001;
+  }
+  assert.deepEqual(requests.map(r => r.length), [30,30,15]);
+  assert.equal(new Set(requests.flat()).size, 75);
+  await overlay.enrich('bsc', rows); assert.equal(requests[3][0], rows[0].address);
+});
+
 test('BSC validation selects the highest-liquidity matching pair and exposes only allowlisted fields', async () => {
   const urls = [];
   const fetchImpl = async url => {

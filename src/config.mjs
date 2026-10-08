@@ -10,6 +10,8 @@ function boundedInteger(value, fallback, minimum, maximum) {
 }
 
 export const config = Object.freeze({
+  // Require verified evidence for alerts, not for displaying observation leads.
+  requireVerifiedRiskEvidence: true,
   chain: 'robinhood',
   // Only expose chains with either published AVE support or a successful
   // production observation. Arc/Stable were speculative slugs with no local

@@ -328,6 +328,7 @@ export class DexBatchMarketOverlay {
     this.staleTtlMs = Math.max(this.ttlMs, Math.min(120_000, Number(staleTtlMs) || 60_000));
     this.cache = new Map();
     this.pending = new Map();
+    this.batchTurns = new Map();
   }
 
   async enrich(chain, rows, { minMarketCap = 0, maxMarketCap = Number.MAX_SAFE_INTEGER } = {}) {
@@ -335,15 +336,27 @@ export class DexBatchMarketOverlay {
     const normalizedChain = cleanString(chain, 24).toLowerCase();
     const dexChainId = DEX_BATCH_CHAIN_IDS[normalizedChain];
     if (!dexChainId) return rows;
-    const addresses = [...new Set(rows.filter(row => {
+    const eligible = [...new Set(rows.filter(row => {
       const marketCap = optionalNonNegative(row?.market_cap);
       return row?.marketProvider === 'AVE' && marketCap !== null && marketCap >= minMarketCap && marketCap <= maxMarketCap
         && validAddress(row.address, normalizedChain);
     })
-      .map(row => normalizedAddress(row.address, normalizedChain)))].slice(0, 30);
-    if (!addresses.length) return rows;
+      .map(row => normalizedAddress(row.address, normalizedChain)))].slice(0, 300);
+    if (!eligible.length) return rows;
+    // One batch per cadence, shared across tabs. Rotate rather than repeatedly
+    // spending the same request on the first 30 identities.
+    const at = this.now();
+    let turn = this.batchTurns.get(normalizedChain);
+    if (!turn || at >= turn.nextAt && !this.pending.has(turn.key)) {
+      const offset = (turn?.cursor || 0) % eligible.length;
+      const selected = eligible.slice(offset, offset + 30);
+      turn = { addresses: selected, cursor: offset + selected.length, nextAt: at + this.ttlMs,
+        key: normalizedChain + ':' + [...selected].sort().join(',') };
+      this.batchTurns.set(normalizedChain, turn);
+    }
+    const addresses = turn.addresses;
     const key = normalizedChain + ':' + [...addresses].sort().join(',');
-    const at = this.now(), cached = this.cache.get(key);
+    const cached = this.cache.get(key);
     if (cached?.until > at) return overlayDexMarket(rows, normalizedChain, cached.marketByToken, cached.capturedAt, this.ttlMs);
     let job = this.pending.get(key);
     if (!job) {

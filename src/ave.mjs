@@ -170,6 +170,11 @@ function checkEcho(row, chain, ca, requireAddress = false) {
   if (Object.hasOwn(row, 'token_id') && row.token_id !== ca + '-' + AVE_CHAINS[chain]) throw fail('SCHEMA');
   if (requireAddress && address(chain, row.token) !== ca) throw fail('SCHEMA');
 }
+function riskBoolean(value) {
+  if (value === true || value === 1 || value === '1' || value === 'true') return true;
+  if (value === false || value === 0 || value === '0' || value === 'false') return false;
+  return null;
+}
 function tokenRow(row, chain, ca, required = false) {
   checkEcho(row, chain, ca, required);
   const price = numeric(row.current_price_usd);
@@ -203,6 +208,11 @@ function tokenRow(row, chain, ca, required = false) {
     token_tx_count_5m: numeric(row.token_tx_count_5m), token_buy_tx_count_5m: numeric(row.token_buy_tx_count_5m),
     token_sell_tx_count_5m: numeric(row.token_sell_tx_count_5m), token_price_change_5m: signedNumeric(row.token_price_change_5m),
     launch_at: seconds(row.launch_at), created_at: seconds(row.created_at),
+    // Preserve explicit flags when present; absence is unknown, never safe.
+    // is_audited is deliberately NOT a substitute for any security verdict.
+    is_wash_trading: riskBoolean(row.is_wash_trading), is_honeypot: riskBoolean(row.is_honeypot),
+    is_open_source: [riskBoolean(row.is_open_source), riskBoolean(row.open_source)].includes(false)
+      ? false : riskBoolean(row.is_open_source) ?? riskBoolean(row.open_source),
     updated_at: row.updated_at ?? null, sourceUpdatedAt: upstreamTime(row.updated_at),
     identityBasis: row.token === undefined && row.address === undefined ? 'request_path' : 'response' };
 }
@@ -346,7 +356,8 @@ function marketRow(row, capturedAt, now) {
     sell_volume_5m: row.token_sell_volume_u_5m, swaps_5m: row.token_tx_count_5m,
     buys_5m: row.token_buy_tx_count_5m, sells_5m: row.token_sell_tx_count_5m,
     price_change_percent5m: row.token_price_change_5m === null ? null : row.token_price_change_5m / 100,
-    rug_ratio: null, bundler_rate: null, rat_trader_amount_rate: null, is_wash_trading: null, is_honeypot: null,
+    rug_ratio: null, bundler_rate: null, rat_trader_amount_rate: null,
+    is_wash_trading: row.is_wash_trading ?? null, is_honeypot: row.is_honeypot ?? null, is_open_source: row.is_open_source ?? null,
     capturedAt, sourceUpdatedAt: sampledAt, sampledAt, expiresAt,
     stale: sampledAt === null || sampledAt > capturedAt + 30000 || now >= expiresAt,
     identityBasis: row.identityBasis, aveUrl: 'https://pro.ave.ai/token/' + row.token + '-' + row.apiChain + '?ref=0001' };

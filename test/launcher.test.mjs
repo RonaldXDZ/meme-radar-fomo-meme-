@@ -1,12 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
+import { readFileSync } from 'node:fs';
 import { setTimeout as delay } from 'node:timers/promises';
 import { probeRadar, radarInstanceId, STARTUP_TIMEOUT_MS, waitForRadar } from '../scripts/launcher-health.mjs';
 import { superviseRadar, watchdogDecision } from '../scripts/supervise.mjs';
 
 const root = '/synthetic/radar', port = 3791;
 const healthy = { service: 'meme-radar', execution: false, instanceId: radarInstanceId(root) };
+test('legacy Mac start shortcut uses the detached launcher except for explicit one-shot scans', () => {
+  const script = readFileSync(new URL('../start-radar.command', import.meta.url), 'utf8');
+  assert.match(script, /if .*--once/);
+  assert.match(script, /fi\nexec "\$node_bin" "\$radar_dir\/scripts\/open\.mjs" "\$@"/);
+});
 function response(value = healthy, { status = 200, interrupted = false } = {}) {
   return (_url, _options, callback) => {
     const request = new EventEmitter(); request.destroy = () => {};

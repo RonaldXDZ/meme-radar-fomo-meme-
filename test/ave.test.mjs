@@ -4,6 +4,7 @@ import { mkdtempSync, readFileSync, writeFileSync, symlinkSync, mkdirSync, statS
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { AveClient, createAveBudgetStore, AVE_LIMITS, tokenInfoPrice, normalizeList } from '../src/ave.mjs';
+import { normalizeLiveRows } from '../src/live-discovery.mjs';
 
 const ca = n => '0x' + n.toString(16).padStart(40, '0');
 const CA = ca(1), POOL = ca(2), KEY = 'public-mock-key-never-live';
@@ -17,6 +18,20 @@ const pair = (changes = {}) => ({ pair: POOL, chain: 'bsc', amm: 'pancakeswap', 
   buy_volume_u_5m: '300', sell_volume_u_5m: '200', buys_tx_24h_count: 100, sells_tx_24h_count: 80, ...changes });
 const klines = (changes = {}) => ({ status: 1, data: { interval: 1, points: Array.from({ length: 7 }, (_, index) => ({ time: AT / 1000 - (6 - index) * 60, open: '1', high: '1.2', low: '0.9', close: '1.1', volume: '10' })), ...changes } });
 const responseFor = url => url.includes('/trending?') ? { tokens: [token(new URL(url).searchParams.get('chain'))] } : url.includes('/klines/') ? klines() : url.includes('/pairs/') ? pair() : detail();
+test('explicit AVE risk flags survive normalization and remove tokens from visible candidates', async () => {
+  for (const [field, value] of [['is_wash_trading', true], ['is_wash_trading', '1'], ['is_honeypot', 1], ['is_open_source', false], ['open_source', '0']]) {
+    const f = fixture({fetchImpl: async () => Response.json({tokens:[token('bsc', {[field]:value})]})});
+    const rows = await f.client.discover('bsc');
+    const canonical = field === 'open_source' ? 'is_open_source' : field;
+    assert.equal(rows[0][canonical], canonical === 'is_open_source' ? false : true);
+    assert.deepEqual(normalizeLiveRows(rows, 'bsc', [], f.now(), true), []);
+  }
+  const f = fixture({fetchImpl: async () => Response.json({tokens:[token('bsc', {is_audited:true,is_wash_trading:'unknown',is_open_source:'unknown'})]})});
+  const [row] = await f.client.discover('bsc');
+  assert.equal(row.is_wash_trading, null);
+  assert.equal(row.is_honeypot, null);
+  assert.equal(row.is_open_source, null);
+});
 function fixture(options = {}) {
   let time = AT, key = KEY, stored = null;
   const calls = [], saved = [], clock = options.now || (() => time);

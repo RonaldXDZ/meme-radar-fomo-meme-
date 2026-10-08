@@ -24,6 +24,44 @@ function dispatch(server, path, { method = 'POST', body = {}, extraHeaders = {} 
 }
 const tick = () => new Promise(resolve => setImmediate(resolve));
 
+test('verified-only alerts preserve observation leads but suppress cached recommendations and every voice chain', async () => {
+  const now = Date.now();
+  const row = { address: '0x' + 'a'.repeat(40), chain: 'bsc', symbol: 'UNKNOWN',
+    discoveryState: 'READY', auditEligible: true, stale: false, firstSeenAt: now - 1000,
+    sourceUpdatedAt: now, expiresAt: now + 60000, qualifiedAt: now };
+  const source = { status: 'READY', chain: 'bsc', stale: false, lastSuccessAt: now, receivedCount: 100, rows: [row] };
+  const events = [{ chain: 'bsc', type: 'CANDIDATE_NEW', at: now, message: 'Unverified candidate' },
+    { chain: 'bsc', type: 'RISK_WORSENED', at: now, message: 'Risk warning' }];
+  const value = { activeChain: 'bsc', candidates: [{ ...row, status: 'X_REVIEW' }], events, chainStates: {} };
+  const original = JSON.stringify({ source, value });
+  const server = createServer({ settings: { ...settings, requireVerifiedRiskEvidence: true },
+    state: { value }, supportedChains: ['sol', 'bsc'], liveDiscovery: { readSnapshot: () => source, touch: () => source } });
+  const live = await dispatch(server, '/api/live-discovery', { body: { chain: 'bsc' } });
+  assert.equal(live.status, 200);
+  assert.equal(live.body.receivedCount, 100);
+  assert.equal(live.body.rows.length, 1);
+  assert.equal(live.body.rows[0].hasUnknownRisk, true);
+  assert.equal(live.body.rows[0].recommendationEligible, false);
+  assert.equal(live.body.diagnostics.ready, 1);
+  assert.equal(live.body.recommendationGate.code, 'RISK_EVIDENCE_UNAVAILABLE');
+  assert.equal(live.body.recommendationGate.withheld, 1);
+  for (const path of ['/api/status?chain=bsc', '/api/status?chain=sol', '/api/export']) {
+    const result = await dispatch(server, path, { method: 'GET' });
+    assert.equal(result.status, 200);
+    assert.deepEqual(result.body.candidates, []);
+    assert.equal(result.body.recommendationGate.available, false);
+    assert.ok(result.body.events.every(event => event.type !== 'CANDIDATE_NEW'));
+    for (const rows of Object.values(result.body.voiceSnapshot.chains)) assert.deepEqual(rows, []);
+    for (const scope of Object.values(result.body.chains || {})) {
+      assert.deepEqual(scope.candidates, []);
+      assert.ok(scope.events.every(event => event.type !== 'CANDIDATE_NEW'));
+    }
+  }
+  const status = await dispatch(server, '/api/status?chain=bsc', { method: 'GET' });
+  assert.ok(status.body.events.some(event => event.type === 'RISK_WORSENED'));
+  assert.equal(JSON.stringify({ source, value }), original);
+});
+
 test('AVE connection errors preserve only allowlisted codes and bounded future retry times', async () => {
   const future = Date.now() + 60_000, privateMessage = 'fixture-private-key https://private.invalid/?key=fixture-private-key';
   for (const code of ['AVE_WAIT', 'AVE_HOURLY_BUDGET', 'AVE_TOTAL_BUDGET', 'AVE_DISCOVERY_RESERVE', 'AVE_NETWORK', 'AVE_UPSTREAM']) {

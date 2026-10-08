@@ -65,6 +65,15 @@ function harness(rows = [row(), row(B)], extraChains = {}) {
     click(action) { el('voiceSpotlight').listeners.click({ target: { closest: () => ({ disabled: false, dataset: { voiceAction: action } }) } }); } };
 }
 
+test('unverified recommendation gate cancels a previously qualified spotlight without hiding observation leads', () => {
+  const h = harness();
+  h.alert();
+  assert.equal(h.context.rank(row(), T), 0);
+  h.context.lastData.recommendationGate = { available: false };
+  assert.equal(h.context.rank(row(), T), Infinity);
+  assert.ok(vm.runInContext("unifiedPoolRows('bsc').length", h.context) > 0);
+});
+
 test('alert card is first below the header, appears only after playback event and pins the actual existing row', () => {
   assert.ok(html.indexOf('id="voiceSpotlight"') < html.indexOf('id="notice"'));
   const h = harness();

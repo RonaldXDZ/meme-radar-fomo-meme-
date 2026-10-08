@@ -40,7 +40,8 @@ test('AVE Key form waits for Data verification, blocks duplicate submission and 
     finish(); await pending;
     assert.equal(elements['ave-api-key'].value, ''); assert.ok(buttons.every(button => !button.disabled));
     assert.equal(elements['ave-data-status'].textContent, item.badge); assert.equal(refreshes, item.refreshes);
-    if (item.error) assert.equal(elements['ave-config-status'].textContent, item.notice + ' · ' + item.error);
+    if (item.error) assert.equal(elements['ave-config-status'].textContent, item.notice);
+    assert.doesNotMatch(elements['ave-config-status'].textContent, /AVE_[A-Z_]+/);
     assert.doesNotMatch(JSON.stringify(elements), /private-fixture-api-key|raw-private-fixture|<script>/);
   }
 });

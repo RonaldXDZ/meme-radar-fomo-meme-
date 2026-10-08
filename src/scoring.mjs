@@ -244,6 +244,7 @@ export function aveDiscoveryScreen(row, config, nowSec = Date.now() / 1000) {
   if (optionalCount(row.sells_5m) === 0) reasons.push('近5分钟无卖出成交');
   if (optionalBoolean(row.is_honeypot) === true || row.sellable === false || optionalBoolean(row.cannot_sell_all) === true) reasons.push('已知貔貅或卖出受限');
   if (optionalBoolean(row.is_wash_trading) === true) reasons.push('检测到刷量');
+  if (lower(config.chain) !== 'sol' && (optionalBoolean(row.is_open_source) === false || optionalBoolean(row.open_source) === false)) reasons.push('合约明确未开源');
   for (const [field, label] of [['rug_ratio', 'rug风险'], ['bundler_rate', '捆绑机器人占比'], ['rat_trader_amount_rate', '内幕占比']]) {
     if ((optionalRate(row[field]) ?? 0) > .3) reasons.push(label + '过高');
   }

@@ -899,6 +899,12 @@ export function createServer({ state, settings, controls, switchChain,
   let handoffScheduled = false;
   const aveSnapshot = () => publicAveConnection(readSnapshot(() => ave?.snapshot()));
   const updateSnapshot = () => publicUpdate(readSnapshot(() => updater?.snapshot()));
+  // No verified listing/cluster adapter is connected. Never infer safety from
+  // hot-list inclusion, is_audited, low risk scores or historical audit records.
+  const recommendationGate = () => settings.requireVerifiedRiskEvidence === true ? {
+    mode: 'verified_only', available: false, code: 'RISK_EVIDENCE_UNAVAILABLE',
+    missing: ['ave_listing', 'associated_holder_risk']
+  } : null;
 
   const server = http.createServer(async (req, res) => {
     if (!isTrustedLocalRequest(req, settings)) {
@@ -1017,6 +1023,14 @@ export function createServer({ state, settings, controls, switchChain,
         snapshot.diagnostics.retained = retainedRows.length;
         snapshot.diagnostics.pending = snapshot.rows.filter(row => row.discoveryState === 'PENDING').length;
         snapshot.diagnostics.stale = snapshot.rows.filter(row => row.discoveryState === 'STALE').length;
+        const gate = recommendationGate();
+        if (gate) {
+          snapshot.recommendationGate = { ...gate, withheld: snapshot.rows.length };
+          // Discovery is observation, not a recommendation. Keep screened leads
+          // visible while preventing unverified evidence from qualifying alerts.
+          snapshot.rows = snapshot.rows.map(row => ({ ...row, hasUnknownRisk: true,
+            recommendationEligible: false }));
+        }
         return sendJson(res, 200, snapshot, csp);
       } catch (error) {
         return sendJson(res, [400, 413, 415].includes(error?.statusCode) ? error.statusCode : 500, { error: 'live_request_failed' }, csp);
@@ -1102,7 +1116,14 @@ export function createServer({ state, settings, controls, switchChain,
         requestMetrics: countSummary(state.value.requestMetrics || {}, ['requests', 'cacheHits', 'rateLimits', 'cooldownUntil'])
       };
       output.supportedChains = [...publicChains];
+      const gate = recommendationGate();
+      if (gate) {
+        output.recommendationGate = { ...gate, withheld: output.candidates?.length || 0 };
+        output.candidates = [];
+        output.voiceSnapshot = { chains: Object.fromEntries(enabledChains.map(id => [id, []])) };
+      }
       output.events = (output.events || []).filter(event => !event.chain || publicChains.has(event.chain));
+      if (gate) output.events = output.events.filter(event => event.type !== 'CANDIDATE_NEW');
       // The AVE key and backoff are shared by every chain; a selected chain's
       // stored timer must not advertise an already elapsed retry time.
       const statusNow = Date.now();
@@ -1136,7 +1157,12 @@ export function createServer({ state, settings, controls, switchChain,
           }))
         }]));
         for (const scope of Object.values(output.chains)) {
+          if (gate) {
+            scope.recommendationGate = { ...gate, withheld: scope.candidates?.length || 0 };
+            scope.candidates = [];
+          }
           scope.events = (scope.events || []).filter(event => !event.chain || publicChains.has(event.chain));
+          if (gate) scope.events = scope.events.filter(event => event.type !== 'CANDIDATE_NEW');
         }
         res.setHeader('Content-Disposition', 'attachment; filename="meme-radar-records.json"');
       }

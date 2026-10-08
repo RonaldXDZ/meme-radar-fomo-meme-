@@ -104,7 +104,14 @@ function shutdown() {
   if (closing) return;
   closing = true; scanner.stop(); liveDiscovery.stop();
   market.resetCredentials({ disabled: true });
-  server.close(() => process.exit(0));
+  // A stalled active HTTP response must not hold the process/launcher lock
+  // indefinitely. Give normal responses time to finish before forced closure.
+  const deadline = setTimeout(() => {
+    server.closeAllConnections();
+    process.exit(0);
+  }, 3000);
+  deadline.unref();
+  server.close(() => { clearTimeout(deadline); process.exit(0); });
   server.closeIdleConnections();
 }
 for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => shutdown());
