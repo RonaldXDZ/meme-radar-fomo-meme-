@@ -194,6 +194,10 @@ export function aveDiscoveryScreen(row, config, nowSec = Date.now() / 1000) {
   const ageSec = created !== null && created > 0 ? nowSec - created : 0;
   const mc = mcValue ?? 0, liquidity = liquidityValue ?? 0, volume = optionalNonNegativeNumber(row.volume_5m);
   const reasons = knownRiskReasons(row, { ...config, strictLiquidity: config.minLiquidity });
+  // Discovery is an observation screen, not a full safety verdict. The free
+  // hot-list path does not fetch historical pool evidence. Keep absent optional
+  // evidence separate from known hazards; never fabricate a history pass.
+  const evidenceWarnings = [];
   if (row.chain !== chain || !validAddressForChain(row.address, chain) || /^0x(?:0{40}|e{40})$/i.test(row.address || '')) reasons.push('链或代币地址不匹配');
   if (!(optionalNumber(row.price) > 0)) reasons.push('价格数据未知');
   const capturedAt = optionalNumber(row.capturedAt), sourceUpdatedAt = optionalNumber(row.sourceUpdatedAt);
@@ -221,13 +225,13 @@ export function aveDiscoveryScreen(row, config, nowSec = Date.now() / 1000) {
     const turnover = old ? config.minOldTurnover5m ?? .01 : config.minMatureTurnover5m ?? .005;
     const activityVolume = poolMarket?.volume5m ?? volume;
     const activityLiquidity = poolMarket?.liquidity ?? liquidity;
-    if (old && !poolMarket) reasons.push('老池缺少同池流动性与成交证据');
+    if (old && !poolMarket) evidenceWarnings.push('老池缺少同池流动性与成交证据');
     if (activityVolume < Math.max(absolute, activityLiquidity * turnover)) reasons.push(old ? '老池当前成交活跃度不足' : '当前成交活跃度不足');
   }
   const trajectory = freshAvePoolTrajectory(row, chain, now);
   const mature = ageSec >= (config.matureMarketAgeSec ?? 3600), old = ageSec >= (config.oldMarketAgeSec ?? 21600);
   if (mature && row.poolEvidence && !trajectory) reasons.push('池历史证据身份待核验');
-  if (old && (!trajectory || trajectory.athRatio === null)) reasons.push('老池历史轨迹待核验');
+  if (old && (!trajectory || trajectory.athRatio === null)) evidenceWarnings.push('老池历史轨迹待核验');
   if (trajectory && trajectory.athRatio !== null && mature
     && trajectory.athRatio <= (config.maxCollapsedAthRatio ?? .10)
     && !(trajectory.change1h !== null && trajectory.change1h > (config.strongRebound1h ?? .20))) {
@@ -251,7 +255,8 @@ export function aveDiscoveryScreen(row, config, nowSec = Date.now() / 1000) {
   if (aveHookPending(row, chain)) reasons.push('Hook架构池待核验，交易路由未确认');
   const signals = discoverySignalView(row), priorityBand = mc >= config.priorityMinMarketCap && mc <= config.priorityMaxMarketCap;
   const score = (priorityBand ? 35 : 10) + Math.min(25, liquidity / 1000) + Math.min(20, (volume || 0) / 1000) + Math.min(20, num(row.holder_count) / 10);
-  return { pass: reasons.length === 0, reasons: [...new Set(reasons)], priorityBand, score, mc, liquidity, ageSec, ageBasis,
+  return { pass: reasons.length === 0, reasons: [...new Set(reasons)], evidenceWarnings,
+    historyVerified: Boolean(trajectory?.evidenceFresh && trajectory.athRatio !== null), priorityBand, score, mc, liquidity, ageSec, ageBasis,
     marketProvider: 'AVE', createdAt: created, signals,
     unknownFields: ['rugRatio', 'bundler', 'insider', 'wash', 'honeypot'].filter(field => ({ rugRatio: optionalRate(row.rug_ratio), bundler: optionalRate(row.bundler_rate),
       insider: optionalRate(row.rat_trader_amount_rate), wash: optionalBoolean(row.is_wash_trading), honeypot: optionalBoolean(row.is_honeypot) })[field] === null) };

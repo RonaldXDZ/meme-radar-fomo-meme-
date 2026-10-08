@@ -270,7 +270,7 @@ test('所有显式像素字号均不小于14像素', () => {
 });
 
 test('看板明确区分累计、本轮和近30分钟口径', () => {
-  assert.match(html, /<h1[^>]*>Meme雷达开源版 V2<\/h1>/);
+  assert.match(html, /<h1[^>]*>Meme雷达开源版 V2\.1<\/h1>/);
   assert.match(html, /class="mark">雷达<\/div>/);
   assert.match(html, /扫描轮次[\s\S]*累计/);
   assert.match(html, /发现代币[\s\S]*本轮/);

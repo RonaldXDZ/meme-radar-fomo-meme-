@@ -702,7 +702,7 @@ export function isTrustedLocalRequest(req, settings) {
   } catch { return false; }
 }
 
-export function healthSnapshot(source = {}, settings, now = Date.now()) {
+export function healthSnapshot(source = {}, settings, now = Date.now(), transport = {}) {
   const maxAgeMs = scannerFreshnessMaxAge(settings);
   const lastSuccessAt = finite(source.lastSuccessAt);
   const ageMs = lastSuccessAt > 0 ? Math.max(0, now - lastSuccessAt) : null;
@@ -716,6 +716,12 @@ export function healthSnapshot(source = {}, settings, now = Date.now()) {
     instanceId: crypto.createHash('sha256').update(String(settings.publicDir)).digest('hex').slice(0, 16),
     ready,
     degraded: !ready,
+    transport: {
+      active: transport.active === true,
+      // This measures an actual physical request, not a scheduled rate wait.
+      stalled: transport.active === true && Number.isFinite(transport.activeSince)
+        && transport.activeSince > 0 && now - transport.activeSince > 60_000
+    },
     scanner: {
       status,
       fresh,
@@ -1120,7 +1126,8 @@ export function createServer({ state, settings, controls, switchChain,
       if (gate) {
         output.recommendationGate = { ...gate, withheld: output.candidates?.length || 0 };
         output.candidates = [];
-        output.voiceSnapshot = { chains: Object.fromEntries(enabledChains.map(id => [id, []])) };
+        output.voiceSnapshot = { alertsAvailable: false, unavailableReason: 'risk_evidence',
+          chains: Object.fromEntries(enabledChains.map(id => [id, []])) };
       }
       output.events = (output.events || []).filter(event => !event.chain || publicChains.has(event.chain));
       if (gate) output.events = output.events.filter(event => event.type !== 'CANDIDATE_NEW');
@@ -1168,7 +1175,8 @@ export function createServer({ state, settings, controls, switchChain,
       }
       return sendJson(res, 200, output, csp);
     }
-    if (url.pathname === '/health') return sendJson(res, 200, healthSnapshot(state.value, settings), csp);
+    if (url.pathname === '/health') return sendJson(res, 200,
+      healthSnapshot(state.value, settings, Date.now(), readSnapshot(getMarketStatus)?.transport), csp);
     const assets = { '/voice-ui.mjs': ['voice-ui.mjs', 'text/javascript; charset=utf-8'],
       '/voice-alerts.mjs': ['voice-alerts.mjs', 'text/javascript; charset=utf-8'],
       '/voice-player.mjs': ['voice-player.mjs', 'text/javascript; charset=utf-8'] };

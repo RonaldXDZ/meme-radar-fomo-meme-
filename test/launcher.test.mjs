@@ -2,12 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import { probeRadar, radarInstanceId, STARTUP_TIMEOUT_MS, waitForRadar } from '../scripts/launcher-health.mjs';
 import { superviseRadar, watchdogDecision } from '../scripts/supervise.mjs';
 
-const root = '/synthetic/radar', port = 3791;
-const healthy = { service: 'meme-radar', execution: false, instanceId: radarInstanceId(root) };
+const root = fileURLToPath(new URL('..', import.meta.url)), port = 3791;
+const version = JSON.parse(readFileSync(new URL('../package.json', import.meta.url))).version;
+const healthy = { service: 'meme-radar', execution: false, instanceId: radarInstanceId(root), version };
 test('legacy Mac start shortcut uses the detached launcher except for explicit one-shot scans', () => {
   const script = readFileSync(new URL('../start-radar.command', import.meta.url), 'utf8');
   assert.match(script, /if .*--once/);
@@ -75,6 +77,21 @@ function unfinishedResponse({ drip = false } = {}) {
   };
   return { get, stop: () => clearInterval(timer), stats: () => ({ destroyed, chunks }) };
 }
+
+test('same-install health must match the installed version before a launcher reuses it', async () => {
+  for (const version of [undefined, '0.1.6', '2.0.0', 'invalid']) {
+    await assert.rejects(probeRadar({ root, port, get: response({ ...healthy, version }) }), { code: 'RADAR_VERSION_MISMATCH' });
+  }
+  assert.equal((await probeRadar({ root, port, get: response(healthy) })).status, 'ready');
+});
+
+test('watchdog recovers a stuck physical transport without mistaking pacing for a stuck request', () => {
+  for (const status of ['RATE_LIMITED', 'ERROR', 'RUNNING']) {
+    const snapshot = { ...healthy, status, scanner: { scanInProgress: false }, transport: { active: false, stalled: false } };
+    assert.equal(watchdogDecision({ status: 'ready', snapshot }, 0).recycle, false);
+    assert.equal(watchdogDecision({ status: 'ready', snapshot: { ...snapshot, transport: { active: true, stalled: true } } }, 0).recycle, true);
+  }
+});
 
 async function bounded(promise) {
   let timer;

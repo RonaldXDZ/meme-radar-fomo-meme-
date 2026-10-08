@@ -40,7 +40,7 @@ function harness({ hub = { storage: new Map(), tabs: [], locked: false }, failHi
       if (hub.locked) return fn(null);
       hub.locked = true; try { return await fn({}); } finally { hub.locked = false; }
     } } }, CustomEvent: class { constructor(type, options) { this.type = type; this.detail = options.detail; } },
-    window: { addEventListener: (type, fn) => { events[type] = fn; }, dispatchEvent(event) { emitted.push({ type: event.type, detail: structuredClone(event.detail) }); events[event.type]?.(event); } } });
+    window: { addEventListener: (type, fn) => { events[type] = fn; }, dispatchEvent(event) { if (event.type !== 'radar-voice-ready') emitted.push({ type: event.type, detail: structuredClone(event.detail) }); events[event.type]?.(event); } } });
   return { hub, el, player, events, emitted, start() { assert.ok(begin); begin(); }, advance(ms = 100) { now += ms; },
     row(address = '0x123') { return { chain: 'bsc', address, status: 'X_REVIEW', qualified: true, auditedAt: now, staleAt: now + 600000 }; },
     snapshot(rows = []) { events['radar-snapshot']({ detail: { chains: { bsc: rows } } }); },
@@ -55,6 +55,17 @@ function harness({ hub = { storage: new Map(), tabs: [], locked: false }, failHi
 async function enable(h) {
   h.snapshot(); const pending = h.click('voiceEnable'); await flush(); h.start(); h.finish(); await pending; await flush();
 }
+
+test('strict unavailable alerts say preview-only, never claim enabled or interrupt a manual preview on each refresh', async () => {
+  const h = harness();
+  const blocked = () => h.events['radar-snapshot']({ detail: { alertsAvailable: false, unavailableReason: 'risk_evidence', chains: { bsc: [h.row()] } } });
+  blocked(); assert.match(h.status, /仅可试听/); assert.equal(h.el('voiceEnable').textContent, '试听');
+  const preview = h.click('voiceEnable'); await flush();
+  blocked(); assert.equal(h.player.playing, true, 'polling must not cancel an explicitly requested preview');
+  h.finish(); await preview; await flush();
+  assert.match(h.status, /仅可试听/); assert.doesNotMatch(h.status, /已开启/);
+  h.advance(); blocked(); await flush(); assert.equal(h.plays, 1); assert.deepEqual(h.emitted, []);
+});
 
 test('enable is committed only after the native preview really starts and failure stays disabled', async () => {
   const h = harness({ autoStart: false }); h.snapshot();

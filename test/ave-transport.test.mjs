@@ -145,6 +145,33 @@ test('slow response body counts as transport time before the sixty-second gap', 
   assert.deepEqual(f.starts.map(at => at - AT), [0, 60800]);
 });
 
+test('timeout cancels an unfinished response body and releases the lane before the next paced request', async () => {
+  let cancelled = false;
+  const f = fixture(({ count, url, response }) => count === 1
+    ? new Response(new ReadableStream({ start(controller) { controller.enqueue(new TextEncoder().encode('{')); },
+      cancel() { cancelled = true; } })) : response(url), { timeoutMs: 25 });
+  await assert.rejects(f.client.trending('bsc'), { code: 'AVE_TIMEOUT' });
+  await tick();
+  assert.equal(cancelled, true);
+  assert.equal(f.client.snapshot().transport.active, false);
+  assert.equal(f.client.snapshot().transport.activeSince, 0);
+  await f.client.trending('eth');
+  assert.equal(f.starts.length, 2);
+  assert.ok(f.starts[1] - f.starts[0] >= 60_000);
+  assert.equal(f.read().totalUsed, 10);
+});
+
+test('caller cancellation also cancels a response body without committing partial data', async () => {
+  let cancelled = false;
+  const f = fixture(() => new Response(new ReadableStream({ cancel() { cancelled = true; } })));
+  const controller = new AbortController();
+  const request = f.client.trending('bsc', { signal: controller.signal });
+  await tick();
+  assert.equal(f.client.snapshot().transport.activeSince, AT);
+  controller.abort(); await assert.rejects(request, { code: 'AVE_ABORTED' }); await tick();
+  assert.equal(cancelled, true); assert.equal(f.client.snapshot().transport.active, false);
+});
+
 test('repeated 429 grows both cooldown and effective recovery spacing to a fifteen-minute ceiling across restart', async () => {
   const f = fixture(() => new Response('too many requests ' + KEY, { status: 429 }));
   let client = f.client;

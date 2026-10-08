@@ -675,17 +675,22 @@ export class AveClient {
     if (response.status === 401 || response.status === 403) throw fail('AUTH', 400);
     if (!response.ok) throw fail('UPSTREAM');
   }
-  async #body(response) {
+  async #body(response, signal) {
     const declared = response.headers?.get?.('content-length');
     if (declared && (!/^\d+$/.test(declared) || Number(declared) > AVE_LIMITS.maxBytes)) throw fail('SIZE');
     if (!response.body?.getReader) throw fail('SCHEMA');
     const reader = response.body.getReader(), chunks = []; let size = 0;
+    // A proxy may return headers while its stream ignores fetch cancellation.
+    // Explicitly cancel the owned reader so timeouts release the physical lane.
+    const cancel = () => { void reader.cancel().catch(() => {}); };
+    signal?.addEventListener('abort', cancel, { once: true });
     try {
-      while (true) { const part = await reader.read(); if (part.done) break; size += part.value.byteLength; if (size > AVE_LIMITS.maxBytes) throw fail('SIZE'); chunks.push(part.value); }
+      if (signal?.aborted) throw fail('ABORTED', 499);
+      while (true) { const part = await reader.read(); if (signal?.aborted) throw fail('ABORTED', 499); if (part.done) break; size += part.value.byteLength; if (size > AVE_LIMITS.maxBytes) throw fail('SIZE'); chunks.push(part.value); }
       const bytes = new Uint8Array(size); let offset = 0; for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
       return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
     } catch (error) { if (error instanceof AveError) throw error; throw fail('SCHEMA'); }
-    finally { void reader.cancel().catch(() => {}); }
+    finally { signal?.removeEventListener('abort', cancel); cancel(); }
   }
   async #network(job, path, kind, chain) {
     const controller = new AbortController(); let timer, timedOut = false;
@@ -694,6 +699,7 @@ export class AveClient {
     if (this.#lane.active) throw fail('BUSY', 503);
     this.#lane.active = true;
     const startedAt = this.#now(), previousStart = this.#lane.lastStart;
+    this.#lane.activeSince = startedAt;
     const diagnostic = { at: startedAt, endpoint: kind, chain, httpStatus: 0, category: 'unknown',
       startGapMs: previousStart ? Math.max(0, startedAt - previousStart) : null, durationMs: 0, retryAt: 0, retryAfterMs: 0 };
     const abort = () => controller.abort(); job.controller.signal.addEventListener('abort', abort, { once: true });
@@ -706,7 +712,7 @@ export class AveClient {
         const response = await this.#fetch(ORIGIN + path, { method: 'GET', headers: { 'X-API-KEY': key, Accept: 'application/json' }, redirect: 'error', credentials: 'omit', signal: controller.signal });
         if (controller.signal.aborted) throw fail('ABORTED', 499);
         this.#alive(job); diagnostic.httpStatus = response.status;
-        await this.#httpError(response, diagnostic, controller); const raw = await this.#body(response); this.#alive(job);
+        await this.#httpError(response, diagnostic, controller); const raw = await this.#body(response, controller.signal); this.#alive(job);
         if (controller.signal.aborted) throw fail('ABORTED', 499);
         // HTTP/JSON completion is not yet a validated market response. Keep
         // this exact job's diagnostic attached through the schema check.
@@ -719,7 +725,7 @@ export class AveClient {
         const next = this.#now() + spacing(this.#budget?.rateControl);
         this.#lane.nextStart = Math.max(this.#lane.nextStart, next);
         try { await this.#updateBudget(b => ({ ...b, nextRequestAt: Math.max(b.nextRequestAt, next) })); }
-        finally { this.#lane.active = false; }
+        finally { this.#lane.active = false; this.#lane.activeSince = 0; }
       }
     })();
     try {
@@ -1199,7 +1205,8 @@ export class AveClient {
       nextAllowedAt: this.nextAllowedAt, pauseCode, manualResetRequired, pending: this.#pending.size,
       recovery: { active: recovering(budget?.rateControl), headOnly: headOnly(budget?.rateControl), auditAllowed: !recovering(budget?.rateControl) },
       transport: { spacingMs: spacing(budget?.rateControl), strikes: budget?.rateControl?.strikes || 0,
-        last429At: budget?.rateControl?.last429At || 0, active: this.#lane.active, recent: clone(this.#diagnostics) },
+        last429At: budget?.rateControl?.last429At || 0, active: this.#lane.active,
+        activeSince: this.#lane.active ? this.#lane.activeSince || 0 : 0, recent: clone(this.#diagnostics) },
       discoveryReserveCu: this.discoveryReserveCu, nonTrendingPausedUntil: this.#nonTrendingPauseUntil > at ? this.#nonTrendingPauseUntil : 0,
       metrics: clone(this.metrics), budget: budget ? { ...budget, used: budget.dailyUsed, remaining: Math.max(0, this.dailyBudgetCu - budget.dailyUsed),
         totalRemaining: Math.max(0, this.totalBudgetCu - budget.totalUsed), hourlyRemaining: Math.max(0, this.hourlyBudgetCu - budget.hourlyUsed), hourlyResetAt: nextHour(at),

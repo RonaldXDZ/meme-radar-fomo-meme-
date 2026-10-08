@@ -50,6 +50,7 @@ test('verified-only alerts preserve observation leads but suppress cached recomm
     assert.equal(result.status, 200);
     assert.deepEqual(result.body.candidates, []);
     assert.equal(result.body.recommendationGate.available, false);
+    assert.equal(result.body.voiceSnapshot.alertsAvailable, false);
     assert.ok(result.body.events.every(event => event.type !== 'CANDIDATE_NEW'));
     for (const rows of Object.values(result.body.voiceSnapshot.chains)) assert.deepEqual(rows, []);
     for (const scope of Object.values(result.body.chains || {})) {

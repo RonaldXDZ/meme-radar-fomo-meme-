@@ -7,6 +7,7 @@ const copy = {
   title: ['候选语音提醒','候選語音提醒','Candidate voice alerts','候補の音声通知','후보 음성 알림','تنبيهات المرشحين الصوتية'],
   enable: ['试听并开启','試聽並開啟','Preview & enable','試聴して有効化','미리 듣기 및 켜기','استماع وتفعيل'],
   preview: ['试听','試聽','Preview','試聴','미리 듣기','استماع'],
+  unverified: ['安全核验未接通 · 仅可试听','安全核驗未接通 · 僅可試聽','Safety verification unavailable · preview only','安全性の検証未接続・試聴のみ','안전 검증 미연결 · 미리 듣기만 가능','التحقق من السلامة غير متاح · استماع تجريبي فقط'],
   stop: ['关闭','關閉','Turn off','オフ','끄기','إيقاف'],
   language: ['播报语言','播報語言','Alert language','通知言語','알림 언어','لغة التنبيه'],
   volume: ['音量','音量','Volume','音量','음량','مستوى الصوت'],
@@ -40,16 +41,17 @@ const ignored = row => {
   return (marks[key] || (row.chain === 'robinhood' ? marks[address] : null))?.decision === 'ignored';
 };
 function paint() {
+  const unavailable = online && snapshot?.alertsAvailable === false;
   $('voiceTitle').textContent = t('title'); $('voiceHelp').textContent = t('help');
-  $('voiceEnable').textContent = t(enabled ? 'preview' : 'enable');
+  $('voiceEnable').textContent = t(enabled || unavailable ? 'preview' : 'enable');
   $('voiceStop').textContent = t('stop'); $('voiceStop').hidden = !enabled && state !== 'loading';
   $('voiceLanguageLabel').textContent = t('language'); $('voiceLanguage').setAttribute('aria-label', t('language'));
   $('voiceVolumeLabel').textContent = t('volume'); $('voiceVolume').setAttribute('aria-label', t('volume'));
-  $('voiceStatus').textContent = t(state);
+  $('voiceStatus').textContent = t(unavailable && !['loading', 'error', 'noVoice', 'unsupported'].includes(state) ? 'unverified' : state);
 }
 function savePrefs() { prefs = { enabled, volume: Number($('voiceVolume').value), language: voiceLanguage }; write(prefsKey, prefs); }
 async function notify() {
-  if (!enabled || !online || busy) return;
+  if (!enabled || !online || snapshot?.alertsAvailable === false || busy) return;
   if (!player.ready) { state = 'click'; paint(); return; }
   if (Number($('voiceVolume').value) === 0) { state = 'muted'; paint(); return; }
   busy = true;
@@ -164,11 +166,17 @@ $('voiceLanguage').addEventListener('change', async () => {
 });
 window.addEventListener('radar-snapshot', event => {
   if (!event.detail?.chains) return;
+  const becameUnavailable = snapshot?.alertsAvailable !== false && event.detail.alertsAvailable === false;
   snapshot = event.detail; online = true;
+  if (snapshot.alertsAvailable === false) {
+    if (becameUnavailable) { ++epoch; tracker.reset(); player.stop(); }
+    paint(); return;
+  }
   if (enabled) {
     if (Number($('voiceVolume').value) === 0) tracker.reset();
     tracker.ingest(snapshot, Date.now(), ignored); void notify();
   }
+  paint();
 });
 window.addEventListener('storage', event => {
   if (event.key !== prefsKey) return;
@@ -189,3 +197,4 @@ window.addEventListener('radar-locale', event => { locale = event.detail; paint(
 window.addEventListener('pagehide', () => { ++epoch; enabled = false; tracker.reset(); player.stop(); state = 'click'; paint(); });
 window.addEventListener('pageshow', event => { if (event.persisted) { snapshot = null; online = false; state = 'click'; paint(); } });
 paint();
+window.dispatchEvent(new CustomEvent('radar-voice-ready', { detail: null }));

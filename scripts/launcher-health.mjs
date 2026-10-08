@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import http from 'node:http';
 import path from 'node:path';
+import fs from 'node:fs';
 import { spawn } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
 
@@ -9,7 +10,14 @@ const transientErrors = new Set(['ECONNRESET', 'ETIMEDOUT', 'EPIPE', 'ECONNABORT
 export const radarInstanceId = root => crypto.createHash('sha256').update(path.join(root, 'public')).digest('hex').slice(0, 16);
 const conflict = port => Object.assign(new Error(`${port} 端口已有其他服务或另一份雷达，请关闭它或选择其他 RADAR_PORT。`), { code: 'RADAR_PORT_CONFLICT' });
 
-export function probeRadar({ root, port, timeoutMs = 1500, get = http.get }) {
+function installedVersion(root) {
+  try {
+    const value = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).version;
+    return typeof value === 'string' && /^\d+\.\d+\.\d+$/.test(value) ? value : null;
+  } catch { return null; }
+}
+
+export function probeRadar({ root, port, timeoutMs = 1500, get = http.get, expectedVersion = installedVersion(root) }) {
   return new Promise((resolve, reject) => {
     let done = false, request, deadlineTimer;
     const finish = (value, error) => {
@@ -41,6 +49,11 @@ export function probeRadar({ root, port, timeoutMs = 1500, get = http.get }) {
           try { value = JSON.parse(body); } catch { finish(null, conflict(port)); return; }
           if (response.statusCode !== 200 || value?.service !== 'meme-radar' || value.execution !== false
             || value.instanceId !== radarInstanceId(root)) { finish(null, conflict(port)); return; }
+          if (!expectedVersion || value.version !== expectedVersion) {
+            finish(null, Object.assign(new Error('端口上的雷达与此安装包版本不一致。请先关闭旧版雷达，再启动新版本；不会覆盖本机配置。'),
+              { code: 'RADAR_VERSION_MISMATCH' }));
+            return;
+          }
           finish({ status: 'ready', snapshot: value });
         });
       });

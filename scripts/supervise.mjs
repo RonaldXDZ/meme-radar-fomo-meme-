@@ -10,7 +10,7 @@ export function watchdogDecision(result, failures, now = Date.now()) {
   const nextFailures = snapshot ? 0 : failures + 1;
   const stuck = snapshot?.scanner?.scanInProgress && snapshot.scanner.cycleStartedAt
     && now - snapshot.scanner.cycleStartedAt > 8 * 60_000;
-  return { failures: nextFailures, recycle: nextFailures >= 3 || Boolean(stuck) };
+  return { failures: nextFailures, recycle: nextFailures >= 3 || Boolean(stuck) || snapshot?.transport?.stalled === true };
 }
 
 export async function superviseRadar({ root = projectRoot, port = Number(process.env.RADAR_PORT || 3791),

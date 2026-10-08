@@ -42,5 +42,6 @@ test('a chain switch drops the late result and schedules exactly one immediate f
 test('page boot has no animation startup or overlapping fixed status interval', () => {
   const boot = html.slice(html.indexOf("const storedLocale ="));
   assert.doesNotMatch(boot, /startParticleField\(\)|setInterval\(refresh,/);
+  assert.match(boot, /refresh\(\)\.then\(refreshLive\)/, 'first feed waits for status, not a wasted five-second interval');
   assert.match(boot, /if \(!document.hidden\) renderTelemetry/);
 });

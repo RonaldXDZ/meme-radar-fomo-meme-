@@ -79,6 +79,12 @@ test('AVE live endpoint allowlists fields, keeps quote expiry and supplies the a
   const draw = html.slice(poolStart, poolEnd) + html.slice(start, end) + ';renderLive();';
   vm.runInNewContext(draw, context);
   assert.equal(elements.liveState.textContent, 'liveReady'); assert.equal(elements.liveState.hidden, false);
+  context.lastData.scheduler.enabledChains = ['sol'];
+  context.liveData = { ...response.body, rows: [] };
+  vm.runInNewContext(draw, context);
+  assert.equal(elements.liveState.textContent, 'liveChainDisabled');
+  assert.match(elements.liveRows.innerHTML, /liveChainDisabled/);
+  context.lastData.scheduler.enabledChains = ['bsc']; context.liveData = response.body;
   context.liveRefreshErrorChain = 'bsc';
   vm.runInNewContext(draw, context);
   assert.equal(elements.liveState.textContent, 'liveRefreshFailed', 'a feed error is not a local-service outage');

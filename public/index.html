@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Meme雷达开源版 V2</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='26' fill='%230d1519' stroke='%2343efaa' stroke-width='3'/%3E%3Ccircle cx='32' cy='32' r='5' fill='%2343efaa'/%3E%3C/svg%3E">
+  <title>Meme雷达开源版 V2.1</title>
   <script>
     if (location.protocol === 'file:') location.replace('http://127.0.0.1:3791/' + location.hash);
   </script>
@@ -24,6 +25,7 @@
       --blue: #77aaff;
       --shadow: #0008;
     }
+    #aveDiagnosticRows { white-space: pre-wrap; }
 
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
@@ -739,7 +741,7 @@
     <header>
       <div class="brand">
         <div class="mark">雷达</div>
-        <h1 data-i18n="appTitle">Meme雷达开源版 V2</h1>
+        <h1 data-i18n="appTitle">Meme雷达开源版 V2.1</h1>
       </div>
       <div class="header-actions">
         <label class="language-control" for="languageSelect">
@@ -822,7 +824,7 @@
       </form>
       <p id="ave-config-status" role="status" aria-live="polite" data-i18n="aveUnconfigured">未配置</p>
       <p id="aveBudget" class="muted"></p>
-      <details><summary data-i18n="aveDiagnostics">连接诊断</summary><p id="aveTransport" class="muted"></p><p id="aveDiagnosticRows" class="muted" style="white-space:pre-wrap"></p></details>
+      <details><summary data-i18n="aveDiagnostics">连接诊断</summary><p id="aveTransport" class="muted"></p><p id="aveDiagnosticRows" class="muted"></p></details>
       <div class="api-key-row"><span data-i18n="aveDataService">行情服务</span><span id="ave-data-status" role="status" data-i18n="aveUnconfigured">未配置</span></div>
       <div class="manage-actions"><a href="https://share.ave.ai?lang=zh-cn&amp;code=0001" target="_blank" rel="noopener noreferrer" data-i18n="aveEntry">打开 AVE</a><a href="https://cloud.ave.ai/login" target="_blank" rel="noopener noreferrer" data-i18n="aveManage">API 管理</a></div>
     </details>
@@ -1062,7 +1064,7 @@
       riskAlert: ['风险或证据状态恶化，请重新复核','風險或證據狀態惡化，請重新複核','Risk or evidence worsened; review again','リスク・証拠状態が悪化。再確認してください','위험 또는 근거 상태 악화; 재검토 필요','تدهورت المخاطر أو الأدلة؛ راجع مجددًا'],
       failureAlert: ['扫描长时间未成功，请检查连接','掃描長時間未成功，請檢查連線','No successful scan for an extended period; check connectivity','スキャン成功が長時間ありません。接続を確認してください','장시간 스캔 성공 없음; 연결 확인 필요','لم ينجح المسح منذ فترة؛ تحقق من الاتصال'],
       notificationUnavailable: ['浏览器未允许通知，页面事件仍可查看','瀏覽器未允許通知，仍可查看頁面事件','Notifications unavailable; in-page events remain available','通知を利用できません。ページ内履歴は表示されます','알림을 사용할 수 없습니다. 페이지 기록은 유지됩니다','الإشعارات غير متاحة؛ تبقى أحداث الصفحة'],
-      appTitle: ['Meme雷达开源版 V2', 'Meme雷達開源版 V2', 'Meme Radar Open Source V2', 'Memeレーダー オープンソース版 V2', 'Meme 레이더 오픈 소스판 V2', 'رادار Meme مفتوح المصدر V2'],
+      appTitle: ['Meme雷达开源版 V2.1', 'Meme雷達開源版 V2.1', 'Meme Radar Open Source V2.1', 'Memeレーダー オープンソース版 V2.1', 'Meme 레이더 오픈 소스판 V2.1', 'رادار Meme مفتوح المصدر V2.1'],
       languageLabel: ['语言', '語言', 'Language', '言語', '언어', 'اللغة'],
       languageAria: ['选择语言', '選擇語言', 'Select language', '言語を選択', '언어 선택', 'اختيار اللغة'],
       waitingState: ['等待状态', '等待狀態', 'Waiting', '待機中', '대기 중', 'في الانتظار'],
@@ -1105,6 +1107,7 @@
       attemptEstimate: ['仅为尝试时间，限流时顺延','僅為嘗試時間，限流時順延','Attempt estimate; limits may delay it','試行の目安です。制限時は延期','시도 예상이며 제한 시 지연됨','وقت محاولة تقديري؛ قد تؤخره القيود'],
       chainDeferred: ['恢复后轮到此链','恢復後輪到此鏈','Queued after recovery','復旧後に順番待ち','복구 후 해당 체인 대기','بانتظار دورها بعد التعافي'],
       scanDisabled: ['此链未启用','此鏈未啟用','Chain not enabled','チェーンが無効','체인이 비활성화됨','الشبكة غير مفعلة'],
+      liveChainDisabled: ['此链未加入扫描，点击上方链按钮启用','此鏈未加入掃描，點擊上方鏈按鈕啟用','This chain is not scanning. Click its chain button to enable it.','このチェーンは未有効です。上のチェーンボタンで有効にできます。','스캔에 포함되지 않은 체인입니다. 위 체인 버튼을 눌러 활성화하세요.','هذه الشبكة غير مفعلة للمسح. اضغط زر الشبكة أعلاه لتفعيلها.'],
       scanNeedsAction: ['请检查 API / 预算','請檢查 API / 預算','Check API / budget','API・予算を確認','API / 예산 확인','تحقق من API / الميزانية'],
       screeningSummary: ['本轮筛选情况','本輪篩選情況','Latest screening breakdown','直近の選別結果','최근 선별 내역','تفاصيل الفحص الأخير'],
       screeningCounts: ['收到 {received} · 行情初筛 {qualified} · 未通过 {filtered}','收到 {received} · 行情初篩 {qualified} · 未通過 {filtered}','Received {received} · Market screened {qualified} · Filtered {filtered}','取得 {received}・行情一次通過 {qualified}・除外 {filtered}','수신 {received} · 시세 통과 {qualified} · 제외 {filtered}','المستلم {received} · فحص السوق {qualified} · المستبعد {filtered}'],
@@ -2206,6 +2209,7 @@
         writeStorage('memeRadarViewChainV1', chain);
         showToast(t(notice));
         await refresh();
+        await refreshLive();
       } catch (error) {
         showToast((currentLocale === 'zh-CN' || currentLocale === 'zh-TW') && hasChinese(error.message) ? error.message : t('switchFailed'));
       } finally {
@@ -2419,6 +2423,7 @@
     }
 
     function liveEmptyMessage(data, query, stale, status) {
+      if (status === 'liveChainDisabled') return t(status);
       if (query) return t('liveFilteredEmpty');
       if (stale && data?.lastSuccessAt) return t('liveStale');
       if (data?.receivedCount > 0 || data?.lastSuccessAt) return t('liveNoCandidates');
@@ -2430,7 +2435,9 @@
       const data = liveData && liveData.chain === chain ? liveData : null;
       const stale = !data || data.stale || !data.lastSuccessAt || Date.now() - data.lastSuccessAt > 60000;
       const updateFailed = liveRefreshErrorChain === chain;
-      const status = !liveEnabled ? 'livePaused' : lastData && !serviceOnline ? 'localOffline' : updateFailed ? 'liveRefreshFailed' : data && data.status === 'BUDGET_PAUSED' ? 'aveBudgetPaused'
+      const rotation = lastData?.scheduler?.enabledChains;
+      const chainDisabled = Array.isArray(rotation) && !rotation.includes(chain);
+      const status = !liveEnabled ? 'livePaused' : lastData && !serviceOnline ? 'localOffline' : chainDisabled ? 'liveChainDisabled' : updateFailed ? 'liveRefreshFailed' : data && data.status === 'BUDGET_PAUSED' ? 'aveBudgetPaused'
         : data && data.status === 'HOURLY_BUDGET_PAUSED' ? 'aveHourlyPaused' : data && data.status === 'TOTAL_BUDGET_PAUSED' ? 'aveTotalPaused'
         : data && data.status === 'QUOTA_PAUSED' ? 'aveQuotaPaused' : data && data.status === 'RATE_LIMITED' ? 'aveApiRate'
         : data && ['AUTH_REQUIRED', 'AVE_AUTH_REQUIRED'].includes(data.status) ? 'statusAuth' : data && data.status === 'ERROR' ? 'aveApiNetwork'
@@ -3011,13 +3018,17 @@
       }
     });
 
+    // Module loading can finish after the first status response. Replay only
+    // the current sanitized snapshot; do not add another network request.
+    window.addEventListener('radar-voice-ready', function () {
+      if (serviceOnline && lastData?.voiceSnapshot) window.dispatchEvent(new CustomEvent('radar-snapshot', { detail: lastData.voiceSnapshot }));
+    });
     const storedLocale = readStorage('memeRadarLanguageV1', 'zh-CN');
     setLocale(storedLocale, false);
     renderChainSwitcher(null);
     if (location.protocol !== 'file:') {
       // Neural animation is CSS-driven; do not start the legacy particle loop.
-      refresh();
-      refreshLive();
+      refresh().then(refreshLive);
       setInterval(refreshLive, 5000);
       document.addEventListener('visibilitychange', function () { if (!document.hidden) { refresh(); refreshLive(); } });
       setInterval(function () { if (!document.hidden) renderTelemetry(); }, 1000);

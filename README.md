@@ -2,16 +2,19 @@
 
 作者：**DeFi狙击手** · X：[@bi_9527zx](https://x.com/bi_9527zx)
 
-本地运行的多链 Meme 观察雷达。AVE 负责热榜发现；受支持链使用批量 DexScreener 行情补齐卡片，不额外消耗 AVE CU。默认快速扫描不逐币进行 GoPlus 或 K 线深审。当前版本 **v2.0.0**，按免费 API 的请求限制设计。
+本地运行的多链 Meme 观察雷达。AVE 负责热榜发现；受支持链使用批量 DexScreener 行情补齐卡片，不额外消耗 AVE CU。默认快速扫描不逐币进行 GoPlus 或 K 线深审。当前版本 **v2.1.0**，按免费 API 的请求限制设计。
 
-### v2.0.0 更新重点
+### v2.1.0 更新重点
 
 - 动态中心雷达、伸缩触手与游动节点；真实候选具名并持续连线，无名装饰不触发提醒。
-- 默认打开 BSC，卡片直达 AVE；保留中英文语音组件，未核验线索不播报、不作推荐置顶。
+- 新安装默认打开并扫描 BSC；已有轮询配置保留，未启用链明确提示。
+- 首屏及切链立即读取已有候选缓存，不必等待下一次页面轮询，不增加 AVE 请求。
+- 修复活跃代币因缺少可选历史资料被整批隐藏的问题；观察线索仍标为未核验，已知风险继续拦截。
+- 卡片直达 AVE；保留中英文语音试听，安全核验未接通时明确显示“仅可试听”，不声称已开启推荐提醒。
 - 请求串行与失败退避，行情补全轮换，保留免费 API 的限频和预算保护。
-- 改善 macOS 后台启动和退出恢复，保留简洁视图及减少动态效果适配。
+- 请求超时取消响应读取，卡住后由守护恢复；启动核对版本，防止误开旧进程。动画效果保持不变。
 
-完整说明见 [v2.0.0 更新记录](docs/RELEASE-NOTES-v2.0.0.md)。
+完整说明见 [v2.1.0 更新记录](docs/RELEASE-NOTES-v2.1.0.md)。
 
 使用与配置教程请查看 X：[@bi_9527zx](https://x.com/bi_9527zx) 的置顶内容。
 
@@ -35,9 +38,9 @@
 
 请完整解压后启动；升级前关闭旧版并备份本机配置。
 
-- [Windows x64 一键便携版](https://github.com/nhovongoc0-max/meme-radar/releases/download/v2.0.0/MemeRadar-OpenSource-Windows-x64-2.0.0.zip)
-- [macOS 版](https://github.com/nhovongoc0-max/meme-radar/releases/download/v2.0.0/MemeRadar-OpenSource-macOS-2.0.0.zip)
-- [SHA-256 校验文件](https://github.com/nhovongoc0-max/meme-radar/releases/download/v2.0.0/SHA256SUMS-2.0.0.txt)
+- [Windows x64 一键便携版](https://github.com/nhovongoc0-max/meme-radar/releases/download/v2.1.0/MemeRadar-OpenSource-Windows-x64-2.1.0.zip)
+- [macOS 版](https://github.com/nhovongoc0-max/meme-radar/releases/download/v2.1.0/MemeRadar-OpenSource-macOS-2.1.0.zip)
+- [SHA-256 校验文件](https://github.com/nhovongoc0-max/meme-radar/releases/download/v2.1.0/SHA256SUMS-2.1.0.txt)
 
 也可以在 [Releases](https://github.com/nhovongoc0-max/meme-radar/releases) 页面查看版本说明与文件校验值。
 
@@ -133,6 +136,8 @@ AVE 行情初选不等于安全审计。必需行情缺失、过期或已命中�
 “候选雷达”复用后台最近一次 AVE 单页热榜结果，不另外订阅 20 秒榜单，也不会因页面开启自动更新而增加 AVE 请求。后台在全局范围内每 5 分钟最多发起一条链的热榜请求，多链轮询；限流时更新会按 8 或 15 分钟退避继续延后。界面展示实际采样时间，旧数据不会被改写成实时数据。它不是 WebSocket 推送或抢跑工具，也不是全链新币覆盖。
 
 窗口先排除已知貔貅、刷量、高风险、创建不足5分钟和基础流动性不足的记录；未知风险仍明确为未核验。展示范围为市值1万–15万美元，可按2万–8万美元优先、5分钟成交额或最近出现排序。最近出现指首次进入当前有效候选窗口，不代表刚发币。新候选的语音资格仅保留 10 分钟；已通过筛选的线索因热榜轮换页暂时掉出时，可以“最近线索”最多展示 30 分钟，但会标为旧证据，不语音、不进入核验。当前数据出现筛选失败或硬风险时会立即移除；重新上榜也不会反复播报。首屏不伪造“新币”，榜单缺失也不填充演示数据。
+
+V2.1 将可选历史证据与当前行情初筛分开：6 小时以上的活跃币，缺少同池历史资料不再被当成已知风险直接隐藏，仍以未核验观察线索展示；有明确深度回撤等风险证据时仍按规则过滤。缺失资料不等于安全通过，也不会因此恢复严格模式的推荐提醒。
 
 ## 筛选效果如何验证
 

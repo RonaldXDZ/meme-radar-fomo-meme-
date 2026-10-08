@@ -19,7 +19,7 @@ function defaultState() {
     nextCycleAt: 0,
     cycleStartedAt: 0,
     scanInProgress: false,
-    activeChain: 'robinhood',
+    activeChain: 'bsc',
     pendingChain: '',
     supportedChains: ['sol', 'bsc', 'base', 'eth', 'robinhood'],
     chainStates: {},
