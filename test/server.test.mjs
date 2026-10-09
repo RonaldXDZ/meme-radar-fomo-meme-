@@ -276,7 +276,7 @@ test('HTTP handler enforces local boundary, strong CSP and only safe local confi
   const unsupported = await dispatch(server, {
     method: 'POST',
     pathName: '/api/active-chain',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', Origin: 'http://127.0.0.1:3791' },
     body: JSON.stringify({ chain: 'unknown' })
   });
   assert.equal(unsupported.status, 422);

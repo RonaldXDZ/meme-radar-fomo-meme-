@@ -24,6 +24,36 @@ function dispatch(server, path, { method = 'POST', body = {}, extraHeaders = {} 
 }
 const tick = () => new Promise(resolve => setImmediate(resolve));
 
+test('manual scan route requires same-origin JSON, rejects invalid chains and allowlists returned fields', async () => {
+  const seen = [], retryAt = Date.now() + 60000;
+  let answer = { status: 'cooldown', retryAt, secret: 'synthetic-private-key' };
+  const server = createServer({ settings, state: { value: {} }, supportedChains: ['bsc', 'sol'],
+    refreshScan: chain => { seen.push(chain); return answer; } });
+  for (const extraHeaders of [{ origin: undefined }, { origin: 'https://external.invalid' }, { 'content-type': 'text/plain' }]) {
+    const result = await dispatch(server, '/api/scan-now', { body: { chain: 'bsc' }, extraHeaders });
+    assert.ok([403, 415].includes(result.status));
+  }
+  for (const body of [{}, null, [], { chain: 'unsupported' }, { chain: 123 }, { chain: 'bsc', force: true }]) {
+    assert.equal((await dispatch(server, '/api/scan-now', { body })).status, 400);
+  }
+  assert.deepEqual(seen, []);
+  const cooldown = await dispatch(server, '/api/scan-now', { body: { chain: 'bsc' } });
+  assert.equal(cooldown.status, 200); assert.deepEqual(cooldown.body, { status: 'cooldown', chain: 'bsc', retryAt });
+  answer = { status: 'started', secret: 'synthetic-private-key' };
+  const started = await dispatch(server, '/api/scan-now', { body: { chain: 'sol' } });
+  assert.equal(started.status, 202); assert.deepEqual(started.body, { status: 'started', chain: 'sol', retryAt: null });
+  answer = { status: 'synthetic-private-key' };
+  assert.equal((await dispatch(server, '/api/scan-now', { body: { chain: 'bsc' } })).body.status, 'unavailable');
+});
+
+test('manual scan route hides thrown internal errors and reports an unavailable adapter', async () => {
+  const failing = createServer({ settings, state: { value: {} }, refreshScan: () => { throw Error('synthetic-private-key'); } });
+  const failure = await dispatch(failing, '/api/scan-now', { body: { chain: 'bsc' } });
+  assert.equal(failure.status, 500); assert.deepEqual(failure.body, { error: 'scan_request_failed' });
+  const missing = createServer({ settings, state: { value: {} } });
+  assert.equal((await dispatch(missing, '/api/scan-now', { body: { chain: 'bsc' } })).status, 503);
+});
+
 test('strict recommendations stay closed while separate unverified observation alerts remain available', async () => {
   const now = Date.now();
   const row = { address: '0x' + 'a'.repeat(40), chain: 'bsc', symbol: 'UNKNOWN',
@@ -248,6 +278,22 @@ test('active-chain endpoint rejects a chain outside a multi-chain scan set', asy
   const result = await dispatch(server, '/api/active-chain', { body: { chain: 'sol' } });
   assert.equal(result.status, 409); assert.deepEqual(result.body, { error: 'chain_not_enabled' });
   assert.equal(switched, 0);
+});
+
+test('single-chain endpoint replaces the scan target and rejects legacy multi-selection without mutation', async () => {
+  const visits = [], controls = { singleChain: true, value: { enabledChains: ['bsc'], annotations: {} } };
+  const server = createServer({ settings, state: { value: { activeChain: 'bsc' } }, controls,
+    supportedChains: ['bsc', 'sol', 'eth'], switchChain(chain) {
+      visits.push(chain); controls.value.enabledChains = [chain]; return { activeChain: chain, queued: false };
+    } });
+  assert.equal((await dispatch(server, '/api/active-chain', { body: { chain: 'sol' } })).status, 202);
+  assert.deepEqual(controls.value.enabledChains, ['sol']);
+  assert.equal((await dispatch(server, '/api/scan-chains', { body: { chains: ['bsc', 'sol'] } })).status, 400);
+  assert.deepEqual(controls.value.enabledChains, ['sol']);
+  assert.equal((await dispatch(server, '/api/scan-chains', { body: { chains: ['eth'] } })).status, 200);
+  assert.deepEqual(controls.value.enabledChains, ['eth']); assert.deepEqual(visits, ['sol', 'eth']);
+  assert.equal((await dispatch(server, '/api/active-chain', { body: { chain: 'bsc' }, extraHeaders: { origin: undefined } })).status, 403);
+  assert.deepEqual(visits, ['sol', 'eth']);
 });
 
 test('public status and export omit unsupported legacy Arc and Stable scopes', async () => {

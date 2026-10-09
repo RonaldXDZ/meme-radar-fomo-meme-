@@ -64,7 +64,7 @@ if (state.value.scanProvider !== 'AVE') {
   }
   state.value.scanProvider = 'AVE'; state.save();
 }
-const controls = new RadarControls(config.stateDir, config.supportedChains, state.value.activeChain || config.chain);
+const controls = new RadarControls(config.stateDir, config.supportedChains, state.value.activeChain || config.chain, { singleChain: true });
 scanner = new Scanner({ provider: market, secondary: new SecondaryValidator(), state, controls, sharedRequestIntervalMs });
 const liveDiscovery = new LiveDiscovery({ provider: market, cacheOnly: true, marketOverlay: new DexBatchMarketOverlay() });
 const version = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version;
@@ -84,6 +84,7 @@ const server = createServer({
   settings: { ...config, version },
   supportedChains: config.supportedChains,
   switchChain: chain => scanner.switchChain(chain),
+  refreshScan: chain => scanner.refreshSelectedChain(chain),
   getAveConnection: () => ave.snapshot(),
   getSchedulerStatus: chain => scanner.scheduleSnapshot(chain),
   getMarketStatus: () => market.snapshot()

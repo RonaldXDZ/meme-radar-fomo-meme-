@@ -37,7 +37,7 @@ try {
   assert.ok(Number.isSafeInteger(supervisorPid) && supervisorPid>0,'supervisor lock must name a valid owner');
   assert.equal((await request('/api/status')).aveConnection.configured,false);
   assert.equal(fs.existsSync(path.join(temporary,'node_modules')),false);
-  await request('/api/scan-chains',{chains:['bsc','sol']});
+  await request('/api/active-chain',{chain:'sol'});
   await request('/api/annotation',{chain:'bsc',address:'0x'+'1'.repeat(40),favorite:true,note:'recovery test'});
   const listener=async()=>Number((await exec('lsof',['-t','-iTCP:'+port,'-sTCP:LISTEN'])).stdout.trim());
   const before=await listener();
@@ -51,10 +51,10 @@ try {
   }
   assert.ok(after && after!==before,'supervisor must replace crashed child');
   const recovered=await request('/api/status');
-  assert.deepEqual(recovered.scheduler.enabledChains,['bsc','sol']);
+  assert.deepEqual(recovered.scheduler.enabledChains,['sol']);
   assert.equal(Object.values(recovered.annotations)[0].note,'recovery test');
   assert.equal(recovered.aveConnection.configured,false);
-  console.log('隔离恢复实测通过：后台进程崩溃后自动拉起；多链设置、备注和断开状态均保留。');
+  console.log('隔离恢复实测通过：后台进程崩溃后自动拉起；单链选择、备注和断开状态均保留。');
 } finally {
   if(supervisorPid) { try{process.kill(supervisorPid,'SIGTERM');}catch{} await delay(1500); }
   fs.rmSync(temporary,{recursive:true,force:true});

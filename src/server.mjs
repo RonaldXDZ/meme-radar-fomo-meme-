@@ -932,7 +932,7 @@ function publicUpdate(source = {}) {
     restartRequired: phase === 'handoff', repository: 'nhovongoc0-max/meme-radar' };
 }
 
-export function createServer({ state, settings, controls, switchChain,
+export function createServer({ state, settings, controls, switchChain, refreshScan,
   liveDiscovery, enqueueReview, ave, getAveConnection, getMarketStatus, getSchedulerStatus, updater, onUpdateReady, supportedChains = [] }) {
   const publicChains = allowedChainIds(supportedChains);
   const dashboard = path.join(settings.publicDir, 'index.html');
@@ -1087,6 +1087,14 @@ export function createServer({ state, settings, controls, switchChain,
         if (!controls) return sendJson(res, 503, { error: 'settings_unavailable' }, csp);
         if (url.pathname === '/api/scan-chains') {
           if (Object.keys(body).length !== 1) return sendJson(res, 400, { error: 'invalid_settings' }, csp);
+          if (controls.singleChain === true) {
+            if (!Array.isArray(body.chains) || body.chains.length !== 1 || !publicChains.has(body.chains[0])) {
+              return sendJson(res, 400, { error: 'invalid_settings' }, csp);
+            }
+            if (typeof switchChain !== 'function') return sendJson(res, 503, { error: 'chain_switch_unavailable' }, csp);
+            await switchChain(body.chains[0]);
+            return sendJson(res, 200, { enabledChains: [...controls.value.enabledChains] }, csp);
+          }
           return sendJson(res, 200, controls.setChains(body.chains), csp);
         }
         if (Object.keys(body).sort().join(',') !== 'address,chain,favorite,note') return sendJson(res, 400, { error: 'invalid_settings' }, csp);
@@ -1095,7 +1103,28 @@ export function createServer({ state, settings, controls, switchChain,
     }
 
 
+    if (url.pathname === '/api/scan-now' && req.method === 'POST') {
+      if (!req.headers.origin) return sendJson(res, 403, { error: 'local_request_required' }, csp);
+      if (typeof refreshScan !== 'function') return sendJson(res, 503, { error: 'scan_unavailable' }, csp);
+      try {
+        const body = await readSmallJson(req, 512);
+        if (!body || Array.isArray(body) || typeof body !== 'object' || Object.keys(body).join(',') !== 'chain'
+          || typeof body.chain !== 'string' || !publicChains.has(body.chain)) {
+          return sendJson(res, 400, { error: 'invalid_scan_request' }, csp);
+        }
+        const result = await refreshScan(body.chain);
+        const allowed = ['started', 'scanning', 'cooldown', 'auth_required', 'budget_paused', 'chain_changed', 'unavailable'];
+        const status = allowed.includes(result?.status) ? result.status : 'unavailable';
+        return sendJson(res, status === 'started' ? 202 : 200, {
+          status, chain: body.chain, retryAt: status === 'cooldown' ? publicAveRetryAt(result?.retryAt) : null
+        }, csp);
+      } catch (error) {
+        return sendJson(res, [400, 413, 415].includes(error?.statusCode) ? error.statusCode : 500, { error: 'scan_request_failed' }, csp);
+      }
+    }
+
     if (url.pathname === '/api/active-chain' && req.method === 'POST') {
+      if (!req.headers.origin) return sendJson(res, 403, { error: 'local_request_required' }, csp);
       if (typeof switchChain !== 'function') return sendJson(res, 503, { error: 'chain_switch_unavailable' }, csp);
       try {
         const body = await readSmallJson(req);
@@ -1105,7 +1134,7 @@ export function createServer({ state, settings, controls, switchChain,
         const chain = text(body.chain, 32).toLowerCase();
         if (!publicChains.has(chain)) return sendJson(res, 422, { error: 'unsupported_chain' }, csp);
         const enabledChains = Array.isArray(controls?.value.enabledChains) ? controls.value.enabledChains : [];
-        if (enabledChains.length > 1 && !enabledChains.includes(chain)) {
+        if (!controls?.singleChain && enabledChains.length > 1 && !enabledChains.includes(chain)) {
           return sendJson(res, 409, { error: 'chain_not_enabled' }, csp);
         }
         const result = await switchChain(chain);

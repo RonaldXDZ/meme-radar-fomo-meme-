@@ -46,20 +46,30 @@ export function tokenKey(chain, address) {
 }
 
 export class RadarControls {
-  constructor(dir, chains, initialChain) {
+  constructor(dir, chains, initialChain, { singleChain = false } = {}) {
+    initialChain = chains.includes(initialChain) ? initialChain : chains.includes('bsc') ? 'bsc' : chains[0];
     this.file = path.join(dir, 'preferences.json');
     this.chains = chains;
+    this.singleChain = singleChain;
     const defaults = { enabledChains: [initialChain], annotations: {} };
     this.value = { ...defaults, ...readJsonWithBackup(this.file, defaults).value };
-    this.value.enabledChains = [...new Set(this.value.enabledChains)].filter(x => chains.includes(x)).slice(0, 3);
+    const stored = Array.isArray(this.value.enabledChains) ? this.value.enabledChains : [];
+    this.value.enabledChains = [...new Set(stored)].filter(x => chains.includes(x)).slice(0, 3);
     if (!this.value.enabledChains.length) this.value.enabledChains = [initialChain];
+    if (singleChain && this.value.enabledChains.length > 1) {
+      // Migrate legacy rotation once, preserving notes and the recoverable backup.
+      this.value.enabledChains = [chains.includes('bsc') ? 'bsc' : this.value.enabledChains[0]];
+      atomicJson(this.file, this.value);
+    }
   }
   setChains(chains) {
-    if (!Array.isArray(chains) || !chains.length || chains.length > 3 || new Set(chains).size !== chains.length || chains.some(x => !this.chains.includes(x))) {
+    if (!Array.isArray(chains) || !chains.length || chains.length > (this.singleChain ? 1 : 3) || new Set(chains).size !== chains.length || chains.some(x => !this.chains.includes(x))) {
       throw Object.assign(new Error('invalid_selection'), { statusCode: 400 });
     }
-    this.value.enabledChains = [...chains];
-    atomicJson(this.file, this.value);
+    if (JSON.stringify(chains) === JSON.stringify(this.value.enabledChains)) return { enabledChains: [...chains] };
+    const next = { ...this.value, enabledChains: [...chains] };
+    atomicJson(this.file, next);
+    this.value = next;
     return { enabledChains: this.value.enabledChains };
   }
   annotate({ chain, address, favorite, note }) {

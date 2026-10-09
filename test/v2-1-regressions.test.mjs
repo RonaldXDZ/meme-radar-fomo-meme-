@@ -27,6 +27,75 @@ test('clean install scans the same BSC chain shown by the default page, preservi
   assert.deepEqual(new RadarControls(dir, config.supportedChains, 'bsc').value.enabledChains, ['sol', 'robinhood']);
 });
 
+test('single-chain migration collapses old rotation to BSC and preserves annotations, secrets and budget', t => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'radar-single-default-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const old = { enabledChains: ['sol', 'robinhood', 'bsc'], annotations: { sample: { note: 'keep' } } };
+  atomicJson(path.join(dir, 'preferences.json'), old);
+  for (const name of ['ave-credentials.json', 'ave-read-budget.json']) atomicJson(path.join(dir, name), { fixture: name });
+  const controls = new RadarControls(dir, config.supportedChains, 'sol', { singleChain: true });
+  assert.deepEqual(controls.value.enabledChains, ['bsc']); assert.deepEqual(controls.value.annotations, old.annotations);
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir, 'preferences.json.bak'))), old);
+  assert.throws(() => controls.setChains(['bsc', 'sol']));
+  assert.deepEqual(controls.value.enabledChains, ['bsc']);
+  controls.setChains(['sol']);
+  assert.deepEqual(new RadarControls(dir, config.supportedChains, 'bsc', { singleChain: true }).value.enabledChains, ['sol']);
+  for (const name of ['ave-credentials.json', 'ave-read-budget.json']) assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir, name))), { fixture: name });
+});
+
+test('single-chain selection and restart align with the scanner without bypassing cooldown', async t => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'radar-single-cooldown-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const state = new RadarState(dir); state.value.activeChain = 'sol';
+  const controls = new RadarControls(dir, config.supportedChains, 'bsc', { singleChain: true });
+  const provider = { schedulerReadyAt: Date.now() + 300000, snapshot: () => ({ transport: { spacingMs: 300000 } }) };
+  const scanner = new Scanner({ state, controls, provider });
+  assert.equal(scanner.activeChain, 'bsc');
+  const visits = []; scanner.cycle = async () => { visits.push(scanner.activeChain); };
+  await scanner.start();
+  const deadline = scanner.nextTickAt, providerDeadline = provider.schedulerReadyAt;
+  for (const chain of ['sol', 'base', 'eth', 'robinhood', 'bsc']) {
+    scanner.switchChain(chain);
+    assert.deepEqual(controls.value.enabledChains, [chain]); assert.equal(scanner.activeChain, chain);
+    assert.deepEqual(scanner.scheduleSnapshot(chain).eligibleChains, [chain]);
+    assert.equal(scanner.scheduleSnapshot(chain).nominalChainIntervalMs, 300000);
+  }
+  assert.deepEqual(visits, []); assert.equal(scanner.nextTickAt, deadline); assert.equal(provider.schedulerReadyAt, providerDeadline);
+  scanner.stop();
+});
+
+test('removed chain preferences recover to a supported scan target instead of an empty scheduling pool', t => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'radar-removed-chain-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  atomicJson(path.join(dir, 'preferences.json'), { enabledChains: ['removed-chain'], annotations: {} });
+  const state = new RadarState(dir); state.value.activeChain = 'removed-chain';
+  const controls = new RadarControls(dir, config.supportedChains, state.value.activeChain, { singleChain: true });
+  const scanner = new Scanner({ state, controls, provider: {} });
+  assert.deepEqual(controls.value.enabledChains, ['bsc']);
+  assert.equal(scanner.activeChain, 'bsc'); assert.deepEqual(scanner.schedulingPool(), ['bsc']);
+  scanner.stop();
+});
+
+test('in-flight single-chain selection keeps only the last choice and waits for the shared deadline', async t => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'radar-single-inflight-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const state = new RadarState(dir), controls = new RadarControls(dir, config.supportedChains, 'bsc', { singleChain: true });
+  const visits = []; let complete;
+  const provider = { metrics: {}, keyEpoch: 1, configured: async () => true,
+    discover: async chain => { visits.push(chain); return new Promise(resolve => { complete = resolve; }); } };
+  const scanner = new Scanner({ state, controls, provider, settings: { ...config, maxDeepAuditsPerCycle: 0, outcomeReadsPerCycle: 0 } });
+  const running = scanner.cycle(); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(scanner.switchChain('sol').queued, true);
+  assert.equal(scanner.switchChain('bsc').queued, false); assert.equal(scanner.pendingChain, '');
+  scanner.switchChain('sol'); scanner.switchChain('eth');
+  assert.deepEqual(controls.value.enabledChains, ['eth']);
+  provider.schedulerReadyAt = Date.now() + 300000; complete([]); await running;
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(visits, ['bsc']); assert.equal(scanner.activeChain, 'eth'); assert.equal(scanner.pendingChain, '');
+  provider.schedulerReadyAt = 0; provider.discover = async chain => { visits.push(chain); return []; };
+  await scanner.cycle(); scanner.stop(); assert.deepEqual(visits, ['bsc', 'eth']);
+});
+
 test('active 6h+ hot-list observations do not require unrequested history, but remain unverified', () => {
   const at = 1_800_000_000_000, nowSec = at / 1000;
   const row = { marketProvider: 'AVE', chain: 'bsc', address: '0x' + '1'.repeat(40), symbol: 'OBS',

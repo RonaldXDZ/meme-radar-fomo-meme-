@@ -435,6 +435,8 @@ export class Scanner {
     this.requestedReviews = new Map();
     this.state.value.activeChain = this.activeChain;
     this.state.value.supportedChains = this.supportedChains;
+    const selected = controls?.singleChain && controls.value.enabledChains[0];
+    if (selected && this.supportedChains.includes(selected) && selected !== this.activeChain) this.activateChain(selected, true);
   }
 
   schedulingPool(marketState = {}) {
@@ -512,7 +514,7 @@ export class Scanner {
       throw error;
     }
     const enabledChains = this.controls?.value.enabledChains || [this.activeChain];
-    if (enabledChains.length > 1) {
+    if (!this.controls?.singleChain && enabledChains.length > 1) {
       // Changing the visible tab must not interrupt shared multi-chain work.
       // It also must not open a historical scope which the scheduler is no
       // longer maintaining: in multi-chain mode the visible tabs are exactly
@@ -527,15 +529,34 @@ export class Scanner {
     }
     this.controls?.setChains([normalized]);
     if (this.running) {
-      this.pendingChain = normalized;
-      this.state.value.pendingChain = normalized;
-      this.state.value.events = addEvent(this.state.value.events, 'CHAIN_SWITCH_QUEUED', `当前轮次结束后切换到 ${normalized.toUpperCase()}`, this.activeChain);
+      this.pendingChain = normalized === this.activeChain ? '' : normalized;
+      this.state.value.pendingChain = this.pendingChain;
+      if (this.pendingChain) this.state.value.events = addEvent(this.state.value.events, 'CHAIN_SWITCH_QUEUED', `当前轮次结束后切换到 ${normalized.toUpperCase()}`, this.activeChain);
       this.state.save();
-      return { activeChain: this.activeChain, pendingChain: normalized, queued: true };
+      return { activeChain: this.activeChain, pendingChain: this.pendingChain, queued: Boolean(this.pendingChain) };
     }
     if (normalized !== this.activeChain) this.activateChain(normalized);
-    void this.cycle();
+    // A chain click changes the target, not the shared API request deadline.
+    // The existing scheduler wakes at that deadline without fake scan attempts.
+    if (!this.stopped && providerReadyAt(this.provider) <= Date.now() && this.nextTickAt <= Date.now()) void this.cycle();
     return { activeChain: normalized, pendingChain: '', queued: false };
+  }
+
+  refreshSelectedChain(chain) {
+    const selected = this.controls?.value.enabledChains || [this.activeChain];
+    if (selected.length !== 1 || selected[0] !== chain) return { status: 'chain_changed' };
+    if (this.stopped) return { status: 'unavailable' };
+    if (this.running) return { status: 'scanning' };
+    const schedule = this.scheduleSnapshot(chain);
+    if (schedule.reason === 'auth_required') return { status: 'auth_required' };
+    if (schedule.reason === 'manual_reset_required') return { status: 'budget_paused' };
+    const retryAt = Math.max(providerReadyAt(this.provider), this.nextTickAt);
+    if (retryAt > Date.now()) return { status: 'cooldown', retryAt };
+    if (chain !== this.activeChain) return { status: 'unavailable' };
+    // cycle() takes the running lock synchronously. Do not queue duplicate
+    // clicks, reset the shared ledger, or promise a successful upstream read.
+    void this.cycle().catch(() => console.error('手动扫描未完成，请查看本机运行状态。'));
+    return { status: 'started' };
   }
 
   requestCycle() {
@@ -1004,8 +1025,8 @@ export class Scanner {
         const nextChain = this.pendingChain;
         this.pendingChain = '';
         this.activateChain(nextChain);
-        queueMicrotask(() => this.cycle());
-      } else if (rescanRequested) {
+        if (!this.stopped && providerReadyAt(this.provider) <= Date.now()) queueMicrotask(() => this.cycle());
+      } else if (rescanRequested && !this.stopped && providerReadyAt(this.provider) <= Date.now()) {
         queueMicrotask(() => this.cycle());
       }
     }

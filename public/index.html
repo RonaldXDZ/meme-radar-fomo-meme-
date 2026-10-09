@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='26' fill='%230d1519' stroke='%2343efaa' stroke-width='3'/%3E%3Ccircle cx='32' cy='32' r='5' fill='%2343efaa'/%3E%3C/svg%3E">
-  <title>Meme雷达开源版 V2.1.1</title>
+  <title>Meme雷达开源版 V2.1.2</title>
   <script>
     if (location.protocol === 'file:') location.replace('http://127.0.0.1:3791/' + location.hash);
   </script>
@@ -234,8 +234,6 @@
       transition: border-color .16s ease, background .16s ease, color .16s ease, transform .16s ease;
     }
     .chain-button:hover:not(:disabled) { border-color: var(--cyan); color: var(--cyan); transform: translateY(-1px); }
-    .chain-button.scanning:not(.active) { border-color: #31584f; color: #d7e6e1; }
-    .chain-mode { margin-inline-start: 6px; font-size: 14px; color: var(--muted); }
     .chain-button.active { border-color: var(--green); background: #153328; color: var(--green); box-shadow: 0 0 16px #43efaa22; }
     .chain-button:disabled { opacity: .38; cursor: not-allowed; }
     .chain-button.switching { color: var(--amber); border-color: var(--amber); }
@@ -592,6 +590,8 @@
     .live-panel { margin: 16px 0; border-color: #36515d; background: linear-gradient(120deg, #10202a, #0b151a); }
     .live-heading, .live-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 16px 18px; }
     .live-heading h2 { margin: 0; font-size: 20px; }
+    .live-title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 4px; }
+    .mini-button.scan-now-prominent { color: #0d231a; background: #70dda9; border-color: #70dda9; font-weight: 700; }
     .live-heading small, .live-meta { color: #aebfc6; }
     .live-toggle { display: flex; gap: 8px; align-items: center; cursor: pointer; }
     .live-toggle input { accent-color: #74bbc9; }
@@ -741,7 +741,7 @@
     <header>
       <div class="brand">
         <div class="mark">雷达</div>
-        <h1 data-i18n="appTitle">Meme雷达开源版 V2.1.1</h1>
+        <h1 data-i18n="appTitle">Meme雷达开源版 V2.1.2</h1>
       </div>
       <div class="header-actions">
         <label class="language-control" for="languageSelect">
@@ -782,7 +782,9 @@
 
     <section id="livePanel" class="panel live-panel" aria-labelledby="liveTitle">
       <div class="live-heading">
-        <div><h2 id="liveTitle" data-i18n="liveTitle">候选雷达</h2><small data-i18n="radarDisclaimer">自动筛选 · 观察线索，非安全保证</small></div>
+        <div><div class="live-title-row"><h2 id="liveTitle" data-i18n="liveTitle">候选雷达</h2>
+          <button id="scanNow" class="mini-button scan-now-prominent" type="button" disabled data-i18n="scanNow">可强制刷新</button>
+        </div><small data-i18n="radarDisclaimer">自动筛选 · 观察线索，非安全保证</small></div>
         <label class="live-toggle"><input id="liveAuto" type="checkbox" checked><span data-i18n="liveAuto">自动更新</span></label>
       </div>
       <div class="live-toolbar">
@@ -833,10 +835,8 @@
         <details id="manageDetails">
           <summary data-i18n="manageTitle">⚙ 扫描设置与记录</summary>
           <div class="manage-body">
-            <p data-i18n="scanSelectionHelp">选择1–3条链轮询；点击未启用链会加入或替换轮询链，并等待后台调度。</p>
-            <div id="scanSelection" class="manage-actions"></div>
+            <p data-i18n="scanSelectionHelp">只扫描上方选中的链，切链沿用 API 冷却时间。</p>
             <div class="manage-actions">
-              <button id="saveChains" class="mini-button" type="button" data-i18n="saveChains">保存扫描链</button>
               <button id="notificationButton" class="mini-button" type="button" data-i18n="enableAlerts">开启桌面提醒</button>
               <button id="exportButton" class="mini-button" type="button" data-i18n="exportRecords">导出记录</button>
               <button id="disconnectButton" class="mini-button ignore" type="button" data-i18n="disconnectApi">清除并断开 API</button>
@@ -994,6 +994,14 @@
       radarDisclaimer: ['自动筛选 · 观察线索，非安全保证','自動篩選 · 觀察線索，非安全保證','Automatic screening · Signals, not a safety guarantee','自動選別・安全性を保証しません','자동 필터링 · 안전 보장 아님','فحص تلقائي · إشارات وليست ضمانًا للأمان'],
       liveWarning: ['最近线索最多展示30分钟，新线索可语音提醒，不代表安全核验。','最近線索最多顯示30分鐘，新線索可語音提醒，不代表安全核驗。','Recent leads remain for up to 30 minutes. New-lead alerts do not mean safety verification.','最近の候補は最長30分表示。音声通知は安全性の検証を意味しません。','최근 단서는 최대 30분 표시됩니다. 새 단서 알림은 안전 검증이 아닙니다.','تبقى الإشارات الحديثة حتى 30 دقيقة؛ التنبيه لا يعني التحقق من السلامة.'],
       liveAuto: ['自动更新','自動更新','Auto-update','自動更新','자동 업데이트','تحديث تلقائي'],
+      scanNow: ['可强制刷新','可強制重新整理','Force refresh','強制更新','강제 새로고침','تحديث إجباري'],
+      scanNowWait: ['{time}后可刷新','{time}後可重新整理','Ready in {time}','{time}後に更新可能','{time} 후 새로고침','متاح بعد {time}'],
+      scanNowHint: ['刷新当前链；API 冷却期间不会额外请求','重新整理目前鏈；API 冷卻期間不會額外請求','Refresh the selected chain; preserves the API cooldown','選択したチェーンを更新。API の待機時間を保持します','선택한 체인을 새로고침하며 API 대기 시간을 유지합니다','تحديث الشبكة المختارة مع الحفاظ على مهلة API'],
+      scanNowStarted: ['已开始扫描当前链，完成后更新结果','已開始掃描目前鏈，完成後更新結果','Scan started; results update when finished','スキャンを開始しました。完了後に結果を更新します','스캔 시작; 완료 후 결과 업데이트','بدأ الفحص؛ تُحدث النتائج عند الانتهاء'],
+      scanNowRunning: ['正在扫描，请稍候','正在掃描，請稍候','Scanning, please wait','スキャン中です','스캔 중입니다','جارٍ الفحص، يرجى الانتظار'],
+      scanNowCooldown: ['API 冷却中，还需等待{time}才能再次扫描','API 冷卻中，還需等待{time}才能再次掃描','API cooldown; scan available in {time}','API 待機中。{time}後にスキャン可能','API 대기 중; {time} 후 스캔 가능','مهلة API نشطة؛ الفحص متاح بعد {time}'],
+      scanNowChanged: ['扫描链已改变，已同步最新选择','掃描鏈已改變，已同步最新選擇','Scan target changed; following the latest selection','対象チェーンの最新選択に同期しました','스캔 체인이 변경되어 최신 선택과 동기화했습니다','تغيرت شبكة الفحص؛ تمت مزامنة أحدث اختيار'],
+      scanNowFailed: ['暂时无法刷新，请稍后重试','暫時無法重新整理，請稍後再試','Refresh unavailable; please retry later','更新できません。後ほど再試行してください','새로고침 불가; 잠시 후 다시 시도하세요','التحديث غير متاح؛ حاول لاحقاً'],
       liveSort: ['发现排序','發現排序','Discovery order','発見の並び順','발견 정렬','ترتيب الاكتشاف'],
       livePriority: ['2–8万市值优先','2–8萬市值優先','$20–80K cap first','時価総額2～8万ドル優先','시총 2~8만 달러 우선','أولوية لقيمة 20–80 ألف دولار'],
       liveVolumeSort: ["5分钟成交额优先","5分鐘成交額優先","5m volume first","5分出来高優先","5분 거래액 우선","حجم 5 دقائق أولًا"],
@@ -1032,13 +1040,12 @@
       liveAuditScope: ['需先启用该链扫描，且通过原初筛；未知证据不算通过','須先啟用該鏈掃描並通過原初篩；未知證據不算通過','Enable scanning for this chain and pass the existing prefilter; unknown is not safe','対象チェーンのスキャン有効化と既存初期条件の通過が必要','해당 체인 스캔 활성화 및 기존 사전 필터 통과 필요','فعّل مسح الشبكة واجتز الفلتر الأولي؛ المجهول ليس آمنًا'],
       liveAuditDenied: ['暂不能排队：证据已旧、超出原初筛范围或已被安全拒绝','暫不能排隊：證據已舊、超出原初篩範圍或已被安全拒絕','Cannot queue: stale, outside prefilter or safety-rejected','予約不可：古い証拠・対象外・安全上除外','대기 불가: 오래됨, 범위 밖 또는 안전 거부','تعذر الطلب: بيانات قديمة أو خارج الفلتر أو مرفوض أمنيًا'],
       liveQueueFull: ['核验队列已满，请先等待已有请求完成','核驗佇列已滿，請先等待已有請求完成','Audit queue full; wait for pending requests','審査予約が満杯です。完了をお待ちください','감사 대기열 가득 참; 기존 요청 완료 대기','طابور التدقيق ممتلئ؛ انتظر انتهاء الطلبات'],
-      liveLimits: ['全局每5分钟最多发起1条链的热榜请求；多链轮询。429后改为8分钟（必要时15分钟）；5分钟档失败后24小时内不再试探。','全域每5分鐘最多發起1條鏈的熱榜請求；多鏈輪詢。429後改為8分鐘（必要時15分鐘）；5分鐘檔失敗後24小時內不再試探。','Globally, at most one chain leaderboard request starts every 5 min; chains rotate. HTTP 429 backs off to 8 min (15 if needed); after a failed 5-min probe, that cadence is not tried again for 24 h.','全体で5分に最大1チェーンのランキング取得を開始し、複数チェーンは巡回します。429時は8分（必要なら15分）に延長し、5分間隔の試行失敗後24時間は同じ間隔を再試行しません。','전체에서 5분마다 체인 1개의 인기 목록 요청만 시작하며 여러 체인은 순환합니다. 429 발생 시 8분(필요하면 15분)으로 늘리고, 5분 간격 시도 실패 후 24시간 동안 같은 간격을 다시 시도하지 않습니다.','يبدأ عالميًا طلب قائمة رائجة لسلسلة واحدة كحد أقصى كل 5 دقائق، مع التناوب بين السلاسل. عند 429 يتراجع إلى 8 دقائق (15 عند الحاجة)، وبعد فشل تجربة فاصل 5 دقائق لا يعيد تجربة هذا الفاصل لمدة 24 ساعة.'],
-      avePollingHealthy: ['轮询正常', '輪詢正常', 'Polling normally', '正常に巡回中', '정상 순환 중', 'الاستطلاع يعمل'],
+      liveLimits: ['只扫描选中的链，正常约5分钟一次；切链不重置冷却，限流时自动延后。','只掃描選中的鏈，正常約5分鐘一次；切鏈不重置冷卻，限流時自動延後。','Only the selected chain is scanned, normally about every 5 minutes. Switching preserves cooldown; rate limits delay retries.','選択したチェーンだけを通常約5分ごとにスキャン。切替でも待機時間を保持し、制限時は延期します。','선택한 체인만 보통 약 5분마다 스캔합니다. 전환해도 대기 시간이 유지되고 제한 시 연기됩니다.','تُفحص الشبكة المختارة فقط، عادة كل 5 دقائق؛ التبديل لا يلغي المهلة ويؤخر التقييد المحاولات.'],
+      avePollingHealthy: ['扫描正常', '掃描正常', 'Scanning normally', '正常にスキャン中', '정상 스캔 중', 'الفحص يعمل'],
       aveAwaitingFirstScan: ['等待本链首轮', '等待本鏈首輪', 'Waiting for this chain', 'このチェーンの初回待ち', '해당 체인 첫 스캔 대기', 'بانتظار أول مسح لهذه الشبكة'],
       manageTitle: ['⚙ 扫描设置与记录','⚙ 掃描設定與記錄','⚙ Scan settings & records','⚙ スキャン設定と記録','⚙ 스캔 설정 및 기록','⚙ إعدادات المسح والسجلات'],
       skippedAfterReject: ['安全项已拒绝，后续检查已跳过','安全項已拒絕，後續檢查已略過','Safety rejection; further checks skipped','安全項目で除外。後続チェックは省略','안전 항목에서 제외; 후속 검사 생략','رُفض لأسباب أمنية؛ تم تخطي الفحوص اللاحقة'],
-      scanSelectionHelp: ['选择1–3条链轮询；点击已启用链只查看，未启用链会加入，满3条时替换当前查看链。','選擇1–3條鏈輪詢；點擊已啟用鏈只檢視，未啟用鏈會加入，滿3條時取代當前檢視鏈。','Poll 1–3 chains. Enabled-chain tabs only change the view; inactive chains join polling, replacing the viewed chain when all 3 slots are full.','1～3チェーンを巡回。有効なタブは表示のみ切替え、未選択チェーンは追加され、3件済みなら表示中のチェーンを置換します。','1~3개 체인을 순환합니다. 활성 체인 탭은 보기만 바꾸고, 비활성 체인은 추가되며 3개가 찼 경우 현재 보는 체인을 교체합니다.','استطلع 1–3 شبكات. تبويبات الشبكات المفعلة تغير العرض فقط؛ تنضم غير المفعلة إلى التناوب، وتستبدل الشبكة المعروضة عند امتلاء الخانات الثلاث.'],
-      saveChains: ['保存扫描链','儲存掃描鏈','Save scan chains','対象を保存','스캔 체인 저장','حفظ الشبكات'],
+      scanSelectionHelp: ['只扫描上方选中的链，切链沿用 API 冷却时间。','只掃描上方選中的鏈，切鏈沿用 API 冷卻時間。','Only the selected chain is scanned. Switching preserves the API cooldown.','選択中のチェーンだけをスキャン。切替時も API の待機時間を保持します。','선택한 체인만 스캔합니다. 전환해도 API 대기 시간은 유지됩니다.','تُفحص الشبكة المختارة فقط؛ تبديلها يحافظ على مهلة API.'],
       enableAlerts: ['开启桌面提醒','開啟桌面提醒','Enable desktop alerts','通知を有効化','데스크톱 알림 켜기','تفعيل التنبيهات'],
       muteAlerts: ['静音桌面提醒','靜音桌面提醒','Mute desktop alerts','通知をミュート','알림 끄기','كتم التنبيهات'],
       alertLimit: ['桌面提醒需要本页保持打开并允许通知；静音后仍保留页面事件。','桌面提醒需保持本頁開啟並允許通知；靜音仍保留頁面事件。','Desktop alerts require this page to stay open and notification permission. Muting keeps the event history.','通知にはページを開いたままにし、通知権限が必要です。ミュート後も履歴は残ります。','알림은 페이지를 열어두고 권한을 허용해야 합니다. 음소거해도 기록은 유지됩니다.','تتطلب التنبيهات بقاء الصفحة مفتوحة وإذن الإشعارات. يبقى السجل عند الكتم.'],
@@ -1054,8 +1061,6 @@
       cancelAction: ['取消','取消','Cancel','キャンセル','취소','إلغاء'],
       settingsSaved: ['设置已保存','設定已儲存','Settings saved','設定を保存しました','설정 저장됨','تم حفظ الإعدادات'],
       settingsFailed: ['操作未完成，请重试','操作未完成，請重試','Action failed; retry','操作に失敗しました。再試行してください','실패했습니다. 다시 시도하세요','فشل الإجراء؛ أعد المحاولة'],
-      chainSelectionInvalid: ['请选择1–3条链','請選擇1–3條鏈','Select 1–3 chains','1～3チェーンを選択','1~3개 체인을 선택하세요','اختر 1–3 شبكات'],
-      schedulerSummary: ['轮询：{chains} · 正在处理：{current}','輪詢：{chains} · 正在處理：{current}','Polling: {chains} · Processing: {current}','巡回: {chains} · 処理中: {current}','순환: {chains} · 처리 중: {current}','الاستطلاع: {chains} · المعالجة: {current}'],
       coverageDual: ['双源已接入','雙源已接入','Secondary sources wired','複数ソース接続済み','보조 데이터 연결됨','مصادر إضافية موصولة'],
       coverageSingle: ['仅AVE数据','僅AVE資料','AVE data only','AVEデータのみ','AVE 데이터만','بيانات AVE فقط'],
       coverageLine: ['{window}：到期{eligible} / 完成{completed} / 缺失{missing} · 中位涨跌{median}','{window}：到期{eligible} / 完成{completed} / 缺失{missing} · 中位漲跌{median}','{window}: due {eligible} / complete {completed} / missing {missing} · median {median}','{window}: 対象{eligible} / 完了{completed} / 欠損{missing} · 中央値{median}','{window}: 도래 {eligible} / 완료 {completed} / 누락 {missing} · 중앙값 {median}','{window}: مستحق {eligible} / مكتمل {completed} / مفقود {missing} · الوسيط {median}'],
@@ -1064,7 +1069,7 @@
       riskAlert: ['风险或证据状态恶化，请重新复核','風險或證據狀態惡化，請重新複核','Risk or evidence worsened; review again','リスク・証拠状態が悪化。再確認してください','위험 또는 근거 상태 악화; 재검토 필요','تدهورت المخاطر أو الأدلة؛ راجع مجددًا'],
       failureAlert: ['扫描长时间未成功，请检查连接','掃描長時間未成功，請檢查連線','No successful scan for an extended period; check connectivity','スキャン成功が長時間ありません。接続を確認してください','장시간 스캔 성공 없음; 연결 확인 필요','لم ينجح المسح منذ فترة؛ تحقق من الاتصال'],
       notificationUnavailable: ['浏览器未允许通知，页面事件仍可查看','瀏覽器未允許通知，仍可查看頁面事件','Notifications unavailable; in-page events remain available','通知を利用できません。ページ内履歴は表示されます','알림을 사용할 수 없습니다. 페이지 기록은 유지됩니다','الإشعارات غير متاحة؛ تبقى أحداث الصفحة'],
-      appTitle: ['Meme雷达开源版 V2.1.1', 'Meme雷達開源版 V2.1.1', 'Meme Radar Open Source V2.1.1', 'Memeレーダー オープンソース版 V2.1.1', 'Meme 레이더 오픈 소스판 V2.1.1', 'رادار Meme مفتوح المصدر V2.1.1'],
+      appTitle: ['Meme雷达开源版 V2.1.2', 'Meme雷達開源版 V2.1.2', 'Meme Radar Open Source V2.1.2', 'Memeレーダー オープンソース版 V2.1.2', 'Meme 레이더 오픈 소스판 V2.1.2', 'رادار Meme مفتوح المصدر V2.1.2'],
       languageLabel: ['语言', '語言', 'Language', '言語', '언어', 'اللغة'],
       languageAria: ['选择语言', '選擇語言', 'Select language', '言語を選択', '언어 선택', 'اختيار اللغة'],
       waitingState: ['等待状态', '等待狀態', 'Waiting', '待機中', '대기 중', 'في الانتظار'],
@@ -1102,7 +1107,6 @@
       noRecord: ['暂无记录', '暫無記錄', 'No record', '記録なし', '기록 없음', 'لا يوجد سجل'],
       lastSuccessLabel: ['最近成功扫描', '最近成功掃描', 'Last successful scan', '最終成功スキャン', '최근 성공 스캔', 'آخر مسح ناجح'],
       nextScanLabel: ['当前链下次尝试', '目前鏈下次嘗試', 'Next attempt · this chain', '対象チェーンの次回試行', '현재 체인 다음 시도', 'المحاولة التالية لهذه الشبكة'],
-      sharedCadence: ['{n}条链共享 · 当前链约{time}一轮','{n}條鏈共用 · 目前鏈約{time}一輪','{n} shared chains · about {time} per chain','{n}チェーンで共有・各チェーン約{time}間隔','{n}개 체인 공유 · 체인당 약 {time}','{n} شبكات مشتركة · نحو {time} لكل شبكة'],
       earliestAttempt: ['最早约{time}后','最早約{time}後','No earlier than ~{time}','最短で約{time}後','최소 약 {time} 후','ليس قبل نحو {time}'],
       attemptEstimate: ['仅为尝试时间，限流时顺延','僅為嘗試時間，限流時順延','Attempt estimate; limits may delay it','試行の目安です。制限時は延期','시도 예상이며 제한 시 지연됨','وقت محاولة تقديري؛ قد تؤخره القيود'],
       chainDeferred: ['恢复后轮到此链','恢復後輪到此鏈','Queued after recovery','復旧後に順番待ち','복구 후 해당 체인 대기','بانتظار دورها بعد التعافي'],
@@ -1216,17 +1220,11 @@
       chainEth: ['以太坊', '以太坊', 'Ethereum', 'イーサリアム', '이더리움', 'إيثريوم'],
       chainRobinhood: ['罗宾汉链', '羅賓漢鏈', 'Robinhood Chain', 'Robinhoodチェーン', '로빈후드 체인', 'شبكة Robinhood'],
       chainOfflineHint: ['本地服务离线，暂时不能切换链路', '本地服務離線，暫時不能切換鏈路', 'Local service is offline; chain switching is unavailable', 'ローカルサービスがオフラインのため切替できません', '로컬 서비스가 오프라인이라 체인을 바꿀 수 없습니다', 'الخدمة المحلية غير متصلة؛ لا يمكن تبديل الشبكة'],
-      chainPollingBadge: ['轮询', '輪詢', 'Polling', '巡回', '순환', 'تناوب'],
-      chainPollingTitle: ['已加入轮询；不代表行情实时在线', '已加入輪詢；不代表行情即時在線', 'Included in polling; not a live-data health indicator', '巡回対象です。リアルタイムデータの正常性を示すものではありません', '순환 대상이며 실시간 데이터 정상 여부를 뜻하지 않습니다', 'ضمن التناوب؛ لا يشير إلى سلامة البيانات الفورية'],
-      chainJoinTitle: ['尚未启用；点击加入轮询', '尚未啟用；點擊加入輪詢', 'Not enabled; click to join polling', '未有効。クリックして巡回に追加', '비활성; 클릭하여 순환에 추가', 'غير مفعلة؛ انقر للإضافة إلى التناوب'],
       chainPendingHint: ['当前：{current} · 本轮结束后切换到{pending}', '目前：{current} · 本輪結束後切換到{pending}', 'Current: {current} · switch to {pending} after this cycle', '現在：{current}・今回終了後に{pending}へ切替', '현재: {current} · 이번 주기 후 {pending}(으)로 전환', 'الحالية: {current} · التبديل إلى {pending} بعد هذه الدورة'],
-      chainReadyHint: ['点击已启用链只查看；未启用链会加入，满3条时替换当前查看链', '點擊已啟用鏈只查看；未啟用鏈會加入，滿3條時取代當前查看鏈', 'Enabled chains change the view; inactive chains join polling and replace the viewed chain when all 3 slots are full', '有効なチェーンは表示切替のみ。未選択チェーンは追加され、3件済みなら表示中を置換', '활성 체인은 보기만 바꾸고, 비활성 체인은 추가되며 3개가 차면 현재 보는 체인을 교체', 'الشبكات المفعلة تغير العرض فقط؛ تنضم غير المفعلة للتناوب وتستبدل المعروضة عند امتلاء الثلاث'],
-      chainClickHint: ['当前：{chain} · 点击其他链后等待轮询调度', '目前：{chain} · 點擊其他鏈後等待輪詢調度', 'Current: {chain} · changes wait for the polling scheduler', '現在：{chain}・変更後は巡回スケジュールを待ちます', '현재: {chain} · 변경 후 순환 스케줄을 기다립니다', 'الحالية: {chain} · تنتظر التغييرات جدول التناوب'],
+      chainReadyHint: ['点击切换扫描链', '點擊切換掃描鏈', 'Click to switch the scanned chain', 'クリックしてスキャン対象を切替', '클릭하여 스캔 체인 전환', 'انقر لتبديل شبكة الفحص'],
       chainUnavailableHint: ['当前：{chain} · 后端尚未启用多链切换', '目前：{chain} · 後端尚未啟用多鏈切換', 'Current: {chain} · backend has not enabled multi-chain switching', '現在：{chain}・バックエンドの複数チェーン切替は未有効', '현재: {chain} · 백엔드 다중 체인 전환 미지원', 'الحالية: {chain} · تبديل الشبكات غير مفعّل في الخلفية'],
-      switchingToast: ['正在更新轮询链，等待后台调度……', '正在更新輪詢鏈，等待後台調度……', 'Updating polling chains; waiting for the scheduler…', '巡回チェーンを更新。スケジュールを待っています…', '순환 체인 업데이트 중; 스케줄을 기다립니다…', 'جارٍ تحديث شبكات التناوب؛ بانتظار الجدول…'],
+      switchingToast: ['正在切换扫描链……', '正在切換掃描鏈……', 'Switching the scanned chain…', 'スキャン対象を切り替えています…', '스캔 체인 전환 중…', 'جارٍ تبديل شبكة الفحص…'],
       switchAccepted: ['链路切换已受理，正在等待首轮结果', '鏈路切換已受理，正在等待首輪結果', 'Chain switch accepted; waiting for first result', '切替を受理。最初の結果を待っています', '체인 전환 수락; 첫 결과 대기 중', 'تم قبول التبديل؛ بانتظار أول نتيجة'],
-      chainAdded: ['已加入轮询，正在等待本链结果', '已加入輪詢，正在等待本鏈結果', 'Added to polling; waiting for this chain', '巡回に追加。結果を待っています', '순환 대상에 추가됨; 결과 대기 중', 'تمت الإضافة إلى الاستطلاع؛ بانتظار النتيجة'],
-      chainReplaced: ['已替换当前查看链，等待轮询调度', '已取代當前查看鏈，等待輪詢調度', 'Replaced the viewed chain; waiting for polling', '表示中のチェーンを置換し、巡回を待っています', '현재 보는 체인을 교체했으며 순환을 기다립니다', 'تم استبدال الشبكة المعروضة؛ بانتظار التناوب'],
       unsupportedChain: ['当前后端不支持这条链', '目前後端不支援這條鏈', 'This chain is not supported by the backend', 'このチェーンは未対応です', '백엔드가 이 체인을 지원하지 않습니다', 'هذه الشبكة غير مدعومة في الخلفية'],
       switchUnavailable: ['后端尚未启用链路切换', '後端尚未啟用鏈路切換', 'Chain switching is not enabled', 'チェーン切替は未有効です', '체인 전환이 활성화되지 않았습니다', 'تبديل الشبكات غير مفعّل'],
       scanBusy: ['当前扫描尚未结束，请稍后再切换', '目前掃描尚未結束，請稍後再切換', 'A scan is still running; switch later', 'スキャン中です。後で切替えてください', '스캔이 진행 중입니다. 잠시 후 전환하세요', 'المسح جارٍ؛ بدّل لاحقًا'],
@@ -1548,6 +1546,8 @@
     let rowsCache = [];
     let toastTimer = null;
     let chainSwitching = false;
+    let manualScanBusy = false;
+    let manualScanRetry = null;
     let rowsFingerprint = '';
 
     function readStorage(key, fallback) {
@@ -1571,7 +1571,6 @@
     let liveRefreshErrorChain = '';
     let liveFingerprint = '';
     const liveQueued = new Map();
-    let selectedChainsDirty = false;
     let noteTarget = null;
     let alertsEnabled = readStorage('memeRadarAlertsEnabledV1', false);
     let alertsSince = readStorage('memeRadarAlertsSinceV1', Date.now());
@@ -1614,17 +1613,7 @@
     }
 
     function renderManagement(data) {
-      const scheduler = data.scheduler || {};
-      const enabled = scheduler.enabledChains || [activeChain(data)];
-      if (!selectedChainsDirty) byId('scanSelection').innerHTML = chainCatalog.map(function (chain) {
-        const coverage = data.coverage && data.coverage[chain.id];
-        const covered = coverage && coverage.goPlus && coverage.dexScreener;
-        return '<label><input type="checkbox" value="' + chain.id + '" ' + (enabled.includes(chain.id) ? 'checked' : '') + '>'
-          + escapeHtml(chainLabel(chain)) + '<span class="muted"> · ' + escapeHtml(t(covered ? 'coverageDual' : 'coverageSingle')) + '</span></label>';
-      }).join('');
-      byId('schedulerDetail').textContent = scheduler.scope === 'shared-provider' && scheduler.nominalChainIntervalMs
-        ? t('sharedCadence', { n: (scheduler.eligibleChains || enabled).length, time: formatDuration(scheduler.nominalChainIntervalMs) })
-        : t('schedulerSummary', { chains: enabled.join(' / '), current: scheduler.scanningChain || activeChain(data) });
+      byId('schedulerDetail').textContent = t('scanSelectionHelp');
       byId('notificationButton').textContent = t(alertsEnabled ? 'muteAlerts' : 'enableAlerts');
       byId('savedNotes').innerHTML = Object.values(data.annotations || {}).map(function (row) {
         return '<div class="saved-row"><strong>' + escapeHtml(row.chain.toUpperCase()) + ' · ' + escapeHtml(row.address) + '</strong><div>' + escapeHtml(row.note || '')
@@ -2153,9 +2142,9 @@
 
     function ensureVisibleChain(data) {
       if (!viewChain) return false;
-      // Viewing the default chain must not silently enable extra API polling.
-      // Keep BSC visible even if it is not currently in the user's scan rotation.
-      if (viewChain === 'bsc') return false;
+      // Another tab can change the one global scan target. Follow it on reads;
+      // never post on each refresh or make tabs fight over the scanner.
+      if (chainSwitching) return false;
       const enabled = data && data.scheduler && Array.isArray(data.scheduler.enabledChains)
         ? data.scheduler.enabledChains.map(function (value) { return String(value).toLowerCase(); }) : [];
       if (!enabled.length || enabled.includes(viewChain)) return false;
@@ -2175,17 +2164,13 @@
         return String(value).toLowerCase();
       }) : [];
       const available = new Set(hasStatus ? (declared.length ? declared : [current]) : []);
-      const scanning = data && data.scheduler && Array.isArray(data.scheduler.enabledChains)
-        ? data.scheduler.enabledChains.map(function (value) { return String(value).toLowerCase(); }) : [];
       byId('chainSwitcher').innerHTML = chainCatalog.map(function (chain) {
         const isActive = chain.id === current;
         const supported = available.has(chain.id);
-        const isScanning = scanning.includes(chain.id);
         const hint = !hasStatus ? t('chainOfflineHint') : !supported ? t('unsupportedChain')
-          : t(isScanning ? 'chainPollingTitle' : 'chainJoinTitle');
-        return '<button type="button" class="chain-button ' + (isActive ? 'active ' : '') + (isScanning ? 'scanning ' : '') + ((chainSwitching && isActive) || pending === chain.id ? 'switching' : '')
-          + '" data-chain="' + chain.id + '" title="' + escapeHtml(hint) + '" aria-label="' + escapeHtml(chainLabel(chain) + ' · ' + hint) + '" aria-pressed="' + (isActive ? 'true' : 'false') + '" ' + ((!supported || chainSwitching || Boolean(pending)) ? 'disabled' : '') + '>' + escapeHtml(chainLabel(chain))
-          + (supported ? '<span class="chain-mode" aria-hidden="true">' + escapeHtml(isScanning ? t('chainPollingBadge') : '+') + '</span>' : '') + '</button>';
+          : t('chainReadyHint');
+        return '<button type="button" class="chain-button ' + (isActive ? 'active ' : '') + ((chainSwitching && isActive) || pending === chain.id ? 'switching' : '')
+          + '" data-chain="' + chain.id + '" title="' + escapeHtml(hint) + '" aria-label="' + escapeHtml(chainLabel(chain) + ' · ' + hint) + '" aria-pressed="' + (isActive ? 'true' : 'false') + '" ' + ((!supported || chainSwitching) ? 'disabled' : '') + '>' + escapeHtml(chainLabel(chain)) + '</button>';
       }).join('');
       const activeItem = chainCatalog.find(function (chain) { return chain.id === current; });
       const pendingItem = chainCatalog.find(function (chain) { return chain.id === pending; });
@@ -2203,29 +2188,15 @@
       const enabled = lastData.scheduler && Array.isArray(lastData.scheduler.enabledChains)
         ? lastData.scheduler.enabledChains.map(function (value) { return String(value).toLowerCase(); }).filter(function (value, index, rows) { return supported.includes(value) && rows.indexOf(value) === index; }) : [];
       const currentView = viewChain || activeChain(lastData);
-      if (chain === currentView && enabled.includes(chain)) return;
+      if (chain === currentView && enabled.length === 1 && enabled[0] === chain) return;
       chainSwitching = true;
       renderChainSwitcher(lastData);
       showToast(t('switchingToast'));
       try {
-        let notice = 'switchAccepted';
-        if (!enabled.includes(chain)) {
-          const next = enabled.slice(0, 3);
-          const fallback = activeChain(lastData);
-          if (!next.length && supported.includes(fallback) && fallback !== chain) next.push(fallback);
-          if (next.length < 3 && !next.includes(chain)) next.push(chain);
-          else {
-            const replacement = next.indexOf(currentView);
-            next[replacement >= 0 ? replacement : next.length - 1] = chain;
-            notice = 'chainReplaced';
-          }
-          await postLocal('/api/scan-chains', { chains: next });
-          selectedChainsDirty = false;
-          if (notice !== 'chainReplaced') notice = 'chainAdded';
-        }
+        await postLocal('/api/active-chain', { chain: chain });
         viewChain = chain;
         writeStorage('memeRadarViewChainV1', chain);
-        showToast(t(notice));
+        showToast(t('switchAccepted'));
         await refresh();
         await refreshLive();
       } catch (error) {
@@ -2234,6 +2205,36 @@
         chainSwitching = false;
         if (lastData) renderChainSwitcher(lastData);
       }
+    }
+
+    function renderScanNow() {
+      const button = byId('scanNow'), chain = viewChain || activeChain(lastData);
+      const scheduler = lastData?.scheduler;
+      const retryAt = Math.max(number(scheduler?.selectedNextAttemptAt), manualScanRetry?.chain === chain ? manualScanRetry.at : 0);
+      const running = scheduler?.reason === 'scanning';
+      button.disabled = manualScanBusy || chainSwitching || !serviceOnline || !lastData;
+      button.textContent = manualScanBusy || running ? t('scanNowRunning') : t('scanNow');
+      button.title = t('scanNowHint') + (retryAt > Date.now()
+        ? ' · ' + t('scanNowWait', { time: formatDuration(retryAt - Date.now()) }) : '');
+    }
+
+    async function refreshCurrentScan() {
+      if (manualScanBusy || chainSwitching || !serviceOnline || !lastData) return;
+      manualScanBusy = true; renderScanNow();
+      const chain = viewChain || activeChain(lastData);
+      try {
+        const result = await postLocal('/api/scan-now', { chain: chain });
+        manualScanRetry = result.status === 'cooldown' && Number.isFinite(result.retryAt) ? { chain: chain, at: result.retryAt } : null;
+        await refresh();
+        await refreshLive(true);
+        if (chain !== (viewChain || activeChain(lastData))) { showToast(t('scanNowChanged')); return; }
+        const messages = { started: 'scanNowStarted', scanning: 'scanNowRunning', auth_required: 'statusAuth',
+          budget_paused: 'aveTotalPaused', chain_changed: 'scanNowChanged' };
+        showToast(result.status === 'cooldown' && manualScanRetry
+          ? t('scanNowCooldown', { time: formatDuration(Math.max(0, manualScanRetry.at - Date.now())) })
+          : t(messages[result.status] || 'scanNowFailed'));
+      } catch { showToast(t('scanNowFailed')); }
+      finally { manualScanBusy = false; renderScanNow(); }
     }
 
     function providerStatus(data) {
@@ -2334,6 +2335,7 @@
     }
 
     function renderTelemetry() {
+      renderScanNow();
       const now = Date.now();
       if (!serviceOnline || !lastData) {
         byId('serviceState').textContent = t('offline');
@@ -2600,9 +2602,9 @@
       }
     }
 
-    async function refreshLive() {
+    async function refreshLive(force) {
       renderLive();
-      if (!liveEnabled || liveBusy || document.hidden || !lastData) return;
+      if ((!liveEnabled && force !== true) || liveBusy || document.hidden || !lastData) return;
       const chain = viewChain || activeChain(lastData);
       liveBusy = true;
       try {
@@ -2931,6 +2933,7 @@
       document.body.classList.toggle('neural-background', document.hidden);
     });
     byId('liveSort').addEventListener('change', renderLive);
+    byId('scanNow').addEventListener('click', refreshCurrentScan);
     byId('liveAuto').addEventListener('change', function (event) {
       liveEnabled = event.target.checked; writeStorage('memeRadarLiveEnabledV1', liveEnabled); refreshLive();
     });
@@ -2960,17 +2963,6 @@
     byId('ave-remove').addEventListener('click', function () { void changeAve('remove'); });
     void refreshAve();
 
-    byId('scanSelection').addEventListener('change', function () { selectedChainsDirty = true; });
-    byId('saveChains').addEventListener('click', async function () {
-      const chains = Array.from(byId('scanSelection').querySelectorAll('input:checked')).map(function (input) { return input.value; });
-      if (!chains.length || chains.length > 3) return showToast(t('chainSelectionInvalid'));
-      try {
-        await postLocal('/api/scan-chains', { chains: chains });
-        selectedChainsDirty = false;
-        if (!chains.includes(viewChain)) viewChain = chains[0];
-        await refresh(); showToast(t('settingsSaved'));
-      } catch { showToast(t('settingsFailed')); }
-    });
     byId('notificationButton').addEventListener('click', async function () {
       if (alertsEnabled) alertsEnabled = false;
       else {
@@ -3046,7 +3038,10 @@
     renderChainSwitcher(null);
     if (location.protocol !== 'file:') {
       // Neural animation is CSS-driven; do not start the legacy particle loop.
-      refresh().then(refreshLive);
+      // Apply the requested BSC opening default once. Later refreshes follow
+      // the server selection; they must not keep rewriting another tab's choice.
+      postLocal('/api/active-chain', { chain: 'bsc' }).catch(function () { showToast(t('switchFailed')); })
+        .then(function () { return refresh().then(refreshLive); });
       setInterval(refreshLive, 5000);
       document.addEventListener('visibilitychange', function () { if (!document.hidden) { refresh(); refreshLive(); } });
       setInterval(function () { if (!document.hidden) renderTelemetry(); }, 1000);

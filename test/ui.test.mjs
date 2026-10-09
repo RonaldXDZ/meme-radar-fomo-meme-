@@ -15,8 +15,8 @@ test('each opening starts on BSC without restoring a previously selected chain',
   assert.doesNotMatch(html, /BNB链/);
   const start = html.indexOf('    function ensureVisibleChain(data)');
   const end = html.indexOf('    function renderChainSwitcher', start);
-  const context = { viewChain: 'bsc' };
-  vm.runInNewContext(html.slice(start, end) + ';this.changed=ensureVisibleChain({scheduler:{enabledChains:["sol","base"]}});', context);
+  const context = { viewChain: 'bsc', chainSwitching: false, writeStorage() {} };
+  vm.runInNewContext(html.slice(start, end) + ';this.changed=ensureVisibleChain({scheduler:{enabledChains:["bsc"]}});', context);
   assert.equal(context.changed, false);
   assert.equal(context.viewChain, 'bsc');
 });
@@ -27,7 +27,7 @@ function liveRefreshHarness(fetch) {
     renderLive() {}, activeChain: data => data.activeChain,
     liveEnabled: true, liveBusy: false, serviceOnline: true, liveRefreshErrorChain: '',
     lastData: { activeChain: 'bsc' }, viewChain: 'bsc', liveData: previous };
-  const start = html.indexOf('async function refreshLive()'), end = html.indexOf('function render(data, forceCandidates)', start);
+  const start = html.indexOf('async function refreshLive('), end = html.indexOf('function render(data, forceCandidates)', start);
   assert.ok(start >= 0 && end > start);
   vm.runInNewContext(html.slice(start, end), context);
   return { context, previous };
@@ -357,7 +357,7 @@ test('翻译词典完整覆盖静态挂点和动态文案键', () => {
   for (const key of new Set([...staticKeys, ...dynamicKeys])) assert.ok(messages[key], '缺少翻译键：' + key);
 });
 
-test('顶部链标签可直接加入或切换扫描，且始终最多三条', async () => {
+test('顶部选链独占扫描目标，不再加入轮询或只切换查看', async () => {
   for (const chain of ['sol', 'bsc', 'base', 'eth', 'robinhood']) {
     assert.match(html, new RegExp("id: '" + chain + "'"));
   }
@@ -369,12 +369,12 @@ test('顶部链标签可直接加入或切换扫描，且始终最多三条', as
     const requests = [], storage = [], toasts = [];
     const context = {
       chainCatalog: ['sol', 'bsc', 'base', 'eth', 'robinhood'].map(id => ({ id })),
-      chainSwitching: false, selectedChainsDirty: true, viewChain: view,
+      chainSwitching: false, viewChain: view,
       lastData: { activeChain: active, supportedChains: ['sol', 'bsc', 'base', 'eth', 'robinhood'], scheduler: { enabledChains: enabled, scanningChain: active } },
       byId: id => elements[id], chainLabel: chain => chain.id, escapeHtml: String, t: key => key,
       showToast: value => toasts.push(value), currentLocale: 'en', hasChinese: () => false,
       postLocal: async (url, body) => { requests.push({ url, body }); return { enabledChains: body.chains }; },
-      writeStorage: (key, value) => storage.push({ key, value }), refresh: async () => {}
+      writeStorage: (key, value) => storage.push({ key, value }), refresh: async () => {}, refreshLive: async () => {}
     };
     vm.runInNewContext(html.slice(start, end) + ';this.renderChainSwitcher=renderChainSwitcher;this.switchActiveChain=switchActiveChain;this.ensureVisibleChain=ensureVisibleChain;', context);
     return { context, elements, requests, storage, toasts };
@@ -386,33 +386,38 @@ test('顶部链标签可直接加入或切换扫描，且始终最多三条', as
     const button = adding.elements.chainSwitcher.innerHTML.match(new RegExp('<button[^>]*data-chain="' + chain + '"[^>]*>'))?.[0];
     assert.ok(button, chain + ' 应显示');
     assert.doesNotMatch(button, /\sdisabled(?:\s|>)/, chain + ' 应可点击');
-    assert.match(button, new RegExp('title="' + (chain === 'bsc' ? 'chainPollingTitle' : 'chainJoinTitle') + '"'));
+    assert.match(button, /title="chainReadyHint"/);
     assert.match(button, /aria-label=/);
   }
-  assert.equal((adding.elements.chainSwitcher.innerHTML.match(/>chainPollingBadge<\/span>/g) || []).length, 1,
-    'only enabled chains show a polling badge; selection is not evidence of health');
+  assert.doesNotMatch(adding.elements.chainSwitcher.innerHTML, /chainPollingBadge|class="chain-mode"|>\+</);
   adding.context.renderChainSwitcher(null);
   assert.doesNotMatch(adding.elements.chainSwitcher.innerHTML, /chainPollingBadge/);
   assert.match(adding.elements.chainSwitcher.innerHTML, /chainOfflineHint/);
   await adding.context.switchActiveChain('base');
-  assert.deepEqual(JSON.parse(JSON.stringify(adding.requests)), [{ url: '/api/scan-chains', body: { chains: ['bsc', 'base'] } }]);
+  assert.deepEqual(JSON.parse(JSON.stringify(adding.requests)), [{ url: '/api/active-chain', body: { chain: 'base' } }]);
   assert.equal(adding.context.viewChain, 'base');
 
   const replacing = harness(['bsc', 'sol', 'base'], 'bsc');
   await replacing.context.switchActiveChain('eth');
-  assert.deepEqual(JSON.parse(JSON.stringify(replacing.requests)), [{ url: '/api/scan-chains', body: { chains: ['eth', 'sol', 'base'] } }]);
+  assert.deepEqual(JSON.parse(JSON.stringify(replacing.requests)), [{ url: '/api/active-chain', body: { chain: 'eth' } }]);
   assert.equal(replacing.context.viewChain, 'eth');
 
   const viewing = harness(['bsc', 'sol'], 'bsc');
   await viewing.context.switchActiveChain('sol');
-  assert.deepEqual(viewing.requests, []);
+  assert.deepEqual(JSON.parse(JSON.stringify(viewing.requests)), [{ url: '/api/active-chain', body: { chain: 'sol' } }]);
   assert.equal(viewing.context.viewChain, 'sol');
 
-  const restored = harness(['bsc', 'robinhood'], 'robinhood', 'eth');
+  const restored = harness(['robinhood'], 'robinhood', 'bsc');
   assert.equal(restored.context.ensureVisibleChain(restored.context.lastData), true);
   assert.equal(restored.context.viewChain, 'robinhood');
   assert.deepEqual(JSON.parse(JSON.stringify(restored.storage)), [{ key: 'memeRadarViewChainV1', value: 'robinhood' }]);
-  assert.doesNotMatch(html.slice(start, end), /\/api\/active-chain/);
+  assert.doesNotMatch(html, /id="scanSelection"|id="saveChains"/);
+  const unchanged = harness(['bsc'], 'bsc', 'bsc');
+  await unchanged.context.switchActiveChain('bsc'); assert.deepEqual(unchanged.requests, []);
+  const failed = harness(['bsc'], 'bsc', 'bsc');
+  failed.context.postLocal = async () => { throw Error('offline'); };
+  await failed.context.switchActiveChain('sol'); assert.equal(failed.context.viewChain, 'bsc');
+  assert.equal(failed.context.chainSwitching, false);
 });
 
 test('AVE 健康状态使用短句，限频仍显示恢复时间', () => {
